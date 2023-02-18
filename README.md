@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/135140554.svg)](https://zenodo.org/badge/latestdoi/135140554)
+[![DOI](https://zenodo.org/badge/602806504.svg)](https://zenodo.org/badge/latestdoi/602806504)
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/dcTensor)](
 https://cran.r-project.org/package=dcTensor)
 [![Downloads](https://cranlogs.r-pkg.org/badges/dcTensor)](https://CRAN.R-project.org/package=dcTensor)
