@@ -1,0 +1,10 @@
+importFrom(rTensor, as.tensor)
+importFrom(nnTensor, NMF)
+importFrom(fields, image.plot)
+importFrom(MASS, ginv)
+
+export(
+    toyModel,
+    dNMF,
+    dGDSVD
+	)

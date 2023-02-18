@@ -1,0 +1,17 @@
+Package: dcTensor
+Type: Package
+Title: Discrete Matrix/Tensor Decomposition
+Version: 0.99.0
+Authors@R: c(person("Koki", "Tsuyuzaki", role = c("aut", "cre"),
+                      email = "k.t.the-answer@hotmail.co.jp"))
+Depends:
+    R (>= 3.4.0)
+Imports:
+    methods,
+    MASS,
+    rTensor,
+    nnTensor,
+    fields
+Description: (Semi-) Binary and Ternary Matrix Decomposition are performed based on Non-negative Matrix Factorization (NMF) and Alternating Least Squares Singular Value Decomposition (ALS-SVD). See the reference section of GitHub README.md <https://github.com/rikenbit/dcTensor>, for details of the methods.
+License: MIT + file LICENSE
+URL: https://github.com/rikenbit/dcTensor
