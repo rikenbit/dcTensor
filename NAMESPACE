@@ -1,10 +1,10 @@
+importFrom(grDevices, dev.off, png)
+importFrom(stats, runif)
+importFrom(methods, is)
+importFrom(MASS, ginv)
+importFrom(fields, image.plot)
 importFrom(rTensor, as.tensor, vec)
 importFrom(nnTensor, NMF)
-importFrom(fields, image.plot)
-importFrom(MASS, ginv)
-importFrom(grDevices, dev.off, png)
-importFrom(methods, is)
-importFrom(stats, runif)
 
 export(
     toyModel,
