@@ -20,7 +20,7 @@ The DESCRIPTION file:
 Maintainer: \packageMaintainer{dcTensor}
 }
 \references{
-XXXXXXXXXXXX
+Z. Zhang, T. Li, C. Ding and X. Zhang, (2007). Binary Matrix Factorization with Applications, \emph{Seventh IEEE International Conference on Data Mining (ICDM 2007)}, 391-400
 }
 
 \keyword{ package }

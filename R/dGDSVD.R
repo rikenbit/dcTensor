@@ -25,8 +25,8 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         # Update U, V
         X_bar <- .recMatrix(U, V)
         pre_Error <- .recError(X, X_bar)
-		U <- .updateU(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, eta, iter)
-		V <- .updateV(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, eta, iter)
+		U <- .updateU_dGDSVD(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, eta, iter)
+		V <- .updateV_dGDSVD(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, eta, iter)
         # After Update U, V
         iter <- iter + 1
         X_bar <- .recMatrix(U, V)
@@ -165,7 +165,7 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         TestRecError=TestRecError, RelChange=RelChange)
 }
 
-.updateU <- function(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, eta, iter){
+.updateU_dGDSVD <- function(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, eta, iter){
 	if(!fixU){
         stepSize <- eta / iter
         grad <- X %*% t(X) %*% U %*% diag(ncol(U):1)
@@ -178,7 +178,7 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
 	U
 }
 
-.updateV <- function(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, eta, iter){
+.updateV_dGDSVD <- function(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, eta, iter){
     if(!fixV){
         stepSize <- eta / iter
         grad <- t(X) %*% X %*% V %*% diag(ncol(V):1)

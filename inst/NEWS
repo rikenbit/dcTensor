@@ -1,4 +1,5 @@
-   VERSION 0.99.0
+   VERSION 0.99.1
 ------------------------
    o Package released
    o Added dNMF and dGDSVD
+   o Added Vignette for dNMF

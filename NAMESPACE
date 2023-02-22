@@ -1,10 +1,13 @@
-importFrom(rTensor, as.tensor)
+importFrom(rTensor, as.tensor, vec)
 importFrom(nnTensor, NMF)
 importFrom(fields, image.plot)
 importFrom(MASS, ginv)
+importFrom(grDevices, dev.off, png)
+importFrom(methods, is)
+importFrom(stats, runif)
 
 export(
     toyModel,
     dNMF,
     dGDSVD
-	)
+    )

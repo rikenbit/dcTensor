@@ -30,8 +30,8 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         # Update U, V
         X_bar <- .recMatrix(U, V)
         pre_Error <- .recError(X, X_bar)
-		U <- .updateU(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, Beta)
-		V <- .updateV(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, Beta)
+		U <- .updateU_dNMF(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, Beta)
+		V <- .updateV_dNMF(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, Beta)
         # After Update U, V
         iter <- iter + 1
         X_bar <- .recMatrix(U, V)
@@ -190,7 +190,7 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         Beta=Beta)
 }
 
-.updateU <- function(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, Beta){
+.updateU_dNMF <- function(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, Beta){
 	if(!fixU){
 		numer <- ((pM * U %*% t(V))^(Beta - 2) * (pM * X)) %*% V + 3 * Bin_U * U^2 + Ter_U * (30 * U^4 + 36 * U^2)
 		denom <- (pM * U %*% t(V) )^(Beta - 1) %*% V + L1_U + L2_U * U + Bin_U * (2 * U^3 + U) + Ter_U * (6 * U^5 + 52 * U^3 + 8 * U)
@@ -199,7 +199,7 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
 	U
 }
 
-.updateV <- function(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, Beta){
+.updateV_dNMF <- function(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, Beta){
     if(!fixV){
         numer <- t((pM * U %*% t(V))^(Beta - 2) * (pM * X)) %*% U + 3 * Bin_V * V^2 + Ter_V * (30 * V^4 + 36 * V^2)
         denom <- t((pM * U %*% t(V))^(Beta - 1)) %*% U + L1_V + L2_V * V + Bin_V * (2 * V^3 + V) + Ter_V * (6 * V^5 + 52 * V^3 + 8 * V)

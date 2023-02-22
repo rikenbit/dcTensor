@@ -26,7 +26,7 @@ devtools::install_github("rikenbit/dcTensor")
 
 References
 ======
-- XXXXX
+- Z. Zhang, T. Li, C. Ding and X. Zhang, "Binary Matrix Factorization with Applications," Seventh IEEE International Conference on Data Mining (ICDM 2007), Omaha, NE, USA, 2007, pp. 391-400, doi: 10.1109/ICDM.2007.99.
 
 ## Authors
 - Koki Tsuyuzaki

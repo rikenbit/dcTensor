@@ -1,0 +1,202 @@
+---
+title: "1. Discretized Non-negative Matrix Factorization Algorithms (`dNMF`)"
+author:
+- name: Koki Tsuyuzaki
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Research
+  email: k.t.the-answer@hotmail.co.jp
+date: "`r Sys.Date()`"
+bibliography: bibliography.bib
+package: dcTensor
+output: rmarkdown::html_vignette
+vignette: |
+  %\VignetteIndexEntry{1. Discretized Non-negative Matrix Factorization Algorithms (`dNMF`)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+In this vignette, we consider approximating a binary (i.e., {0,1}) matrix (or a non-negative matrix) as a product of two non-negative low-rank matrices (a.k.a., factor matrices).
+
+Test data is available from `toyModel`.
+
+```{r data, echo=TRUE}
+library("dcTensor")
+X <- toyModel("NMF")
+```
+
+You will see that there are five blocks in the data matrix as follows.
+
+```{r data2, echo=TRUE, fig.height=4, fig.width=4}
+image(X, main="Original Data")
+```
+
+# Binary Matrix Factorization (BMF)
+
+Here, we consider the approximation of the binary data matrix $X$ ($N \times M$) as the matrix product of $U$ ($N \times J$) and $V$ ($M \times J$):
+
+$$
+X \approx U V' \ \mathrm{s.t.}\ U,V \in \{0,1\}
+$$
+
+This is known as binary matrix factorization (BMF). @bmf et al. developed BMF by binary regularization against non-negative matrix factorization (NMF [@nmf; @amari]).
+
+## Basic Usage
+
+In BMF, the rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNMF, see `?dNMF`. After the calculation, various objects are returned by `dNMF`.
+
+```{r bmf, echo=TRUE}
+set.seed(123456)
+out_BMF <- dNMF(X, Bin_U=1, Bin_V=1, J=5)
+str(out_BMF, 2)
+```
+
+The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converging or not.
+
+```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_BMF$RecError[2:101]), type="b", main="Reconstruction Error")
+plot(log10(out_BMF$RelChange[2:101]), type="b", main="Relative Change")
+```
+
+The product of $U$ and $V$ shows that the original data can be well-recovered by `dNMF`.
+
+```{r rec_bmf, echo=TRUE, fig.height=4, fig.width=8}
+recX <- out_BMF$U %*% t(out_BMF$V)
+layout(t(1:2))
+image(X, main="Original Data")
+image(recX, main="Reconstructed Data (BMF)")
+```
+
+You will also notice that both $U$ and $V$ take values close to 0 and 1. Note that these factor matrices are not completely binarized because the binary is achieved by regularization, not hard binarization.
+
+```{r u_v, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+hist(out_BMF$U, breaks=100)
+hist(out_BMF$V, breaks=100)
+```
+
+Note that these $U$ and $V$ do not always take the values of 0 and 1 completely. This is because the binarization in BMF is based on the regularization to set the values as close to {0,1} as possible, and is not a hard binarization.
+
+```{r u_v2, echo=TRUE}
+head(out_BMF$U)
+head(out_BMF$V)
+```
+
+If you want to get the {0,1} values, use the `round` function as below:
+
+```{r u_v3, echo=TRUE}
+head(round(out_BMF$U, 0))
+head(round(out_BMF$V, 0))
+```
+
+# Semi-Binary Matrix Factorization (SBMF)
+
+Next, we consider the approximation of a non-negative data matrix $X$ ($N \times M$) as the matrix product of binary matrix $U$ ($N \times J$) and non-negative matrix $V$ ($M \times J$):
+
+$$
+X \approx U V' \ \mathrm{s.t.}\ U \in \{0,1\}, V \geq 0
+$$
+
+Here, we define this formalization as semi-binary matrix factorization (SBMF). SBMF can capture discrete patterns from a non-negative matrix.
+
+To demonstrate SBMF, next we use a non-negative matrix from the `nnTensor` package.
+
+```{r data3, echo=TRUE}
+library("nnTensor")
+X2 <- nnTensor::toyModel("NMF")
+```
+
+You will see that there are five blocks in the data matrix as follows.
+
+```{r data4, echo=TRUE, fig.height=4, fig.width=4}
+image(X2, main="Original Data")
+```
+
+## Basic Usage
+
+Switching from BMF to SBMF is quite easy; SBMF is achieved by specifying the binary regularization parameter as a large value like below:
+
+```{r sbmf, echo=TRUE}
+set.seed(123456)
+out_SBMF <- dNMF(X2, Bin_U=1E+6, J=5)
+str(out_SBMF, 2)
+```
+
+`RecError` and `RelChange` can be used to diagnose whether the calculation is converging or not.
+
+```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_SBMF$RecError[2:101]), type="b", main="Reconstruction Error")
+plot(log10(out_SBMF$RelChange[2:101]), type="b", main="Relative Change")
+```
+
+The product of $U$ and $V$ shows that the original data can be well-recovered by `dNMF`.
+
+```{r rec_sbmf, echo=TRUE, fig.height=4, fig.width=8}
+recX2 <- out_SBMF$U %*% t(out_SBMF$V)
+layout(t(1:2))
+image(X2, main="Original Data")
+image(recX2, main="Reconstructed Data (SBMF)")
+```
+
+You will notice that $U$ looks binary but $V$ does not.
+
+```{r u_v4, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+hist(out_SBMF$U, breaks=100)
+hist(out_SBMF$V, breaks=100)
+```
+
+# Semi-Ternary Matrix Factorization (STMF)
+
+Finally, we introduce the binary regularization to ternary regularization to take {0,1,2} values as below:
+
+$$
+X \approx U V' \ \mathrm{s.t.}\ U \in \{0,1,2\}, V \geq 0
+$$
+, where $X$ ($N \times M$) is a non-negative data matrix, $U$ ($N \times J$) is a ternary matrix, and $V$ ($M \times J$) is a non-negative matrix.
+
+## Basic Usage
+
+STMF is achieved by specifying the ternary regularization parameter as a large value like the below:
+
+```{r stmf, echo=TRUE}
+set.seed(123456)
+out_STMF <- dNMF(X2, Ter_U=1E+6, J=5)
+str(out_STMF, 2)
+```
+
+`RecError` and `RelChange` can be used to diagnose whether the calculation is converging or not.
+
+```{r conv_stmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_STMF$RecError[2:101]), type="b", main="Reconstruction Error")
+plot(log10(out_STMF$RelChange[2:101]), type="b", main="Relative Change")
+```
+
+The product of $U$ and $V$ shows that the original data can be well-recovered by `dNMF`.
+
+```{r rec_stmf, echo=TRUE, fig.height=4, fig.width=8}
+recX <- out_STMF$U %*% t(out_STMF$V)
+layout(t(1:2))
+image(X2, main="Original Data")
+image(recX, main="Reconstructed Data (STMF)")
+```
+
+You will notice that $U$ looks ternary but $V$ does not.
+
+```{r u_v5, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+hist(out_STMF$U, breaks=100)
+hist(out_STMF$V, breaks=100)
+```
+
+# Session Information {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
+
+# References
