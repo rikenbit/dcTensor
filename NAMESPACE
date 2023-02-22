@@ -1,5 +1,5 @@
-importFrom(grDevices, dev.off, png)
 importFrom(stats, runif)
+importFrom(grDevices, dev.off, png)
 importFrom(methods, is)
 importFrom(MASS, ginv)
 importFrom(fields, image.plot)
