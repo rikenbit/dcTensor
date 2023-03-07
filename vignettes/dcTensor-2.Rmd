@@ -1,0 +1,86 @@
+---
+title: "2. Discretized Singular Value Decomposition (`dSVD`)"
+author:
+- name: Koki Tsuyuzaki
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Research
+  email: k.t.the-answer@hotmail.co.jp
+date: "`r Sys.Date()`"
+bibliography: bibliography.bib
+package: dcTensor
+output: rmarkdown::html_vignette
+vignette: |
+  %\VignetteIndexEntry{2. Discretized Singular Value Decomposition (`dSVD`)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+In this vignette, we consider approximating a matrix as a product of two low-rank matrices (a.k.a., factor matrices).
+
+Test data is available from `toyModel`.
+
+```{r data, echo=TRUE}
+library("dcTensor")
+X <- dcTensor::toyModel("dSVD")
+```
+
+You will see that there are five blocks in the data matrix as follows.
+
+```{r data2, echo=TRUE, fig.height=4, fig.width=5}
+suppressMessages(library("fields"))
+image.plot(X, main="Original Data", legend.mar=8)
+```
+
+# Semi-Ternary Matrix Factorization (STMF)
+
+Here, we introduce the ternary regularization to take {-1,0,1} values in $U$ as below:
+
+$$
+X \approx U V' \ \mathrm{s.t.}\ U \in \{-1,0,1\},
+$$
+where $X$ ($N \times M$) is a data matrix, $U$ ($N \times J$) is a ternary score matrix, and $V$ ($M \times J$) is a loading matrix. In `dcTensor` package, the object function is optimized by combining gradient-descent algorithm [@svd] and ternary regularization.
+
+## Basic Usage
+
+In STMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) are also available. For the details of arguments of dSVD, see `?dSVD`. After the calculation, various objects are returned by `dSVD`. STMF is achieved by specifying the ternary regularization parameter as a large value like the below:
+
+```{r stmf, echo=TRUE}
+set.seed(123456)
+out_STMF <- dSVD(X, Ter_U=1E+10, J=5)
+str(out_STMF, 2)
+```
+
+The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
+
+```{r conv_stmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_STMF$RecError[2:101]), type="b", main="Reconstruction Error")
+plot(log10(out_STMF$RelChange[2:101]), type="b", main="Relative Change")
+```
+
+The product of $U$ and $V$ shows whether the original data is well-recovered by `dSVD`.
+
+```{r rec_stmf, echo=TRUE, fig.height=4, fig.width=8}
+recX <- out_STMF$U %*% t(out_STMF$V)
+layout(t(1:2))
+image.plot(X, main="Original Data", legend.mar=8)
+image.plot(recX, main="Reconstructed Data (STMF)", legend.mar=8)
+```
+
+The histograms of $U$ and $V$ show that $U$ looks ternary but $V$ does not.
+
+```{r u_v5, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+hist(out_STMF$U, breaks=100)
+hist(out_STMF$V, breaks=100)
+```
+
+# Session Information {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
+
+# References

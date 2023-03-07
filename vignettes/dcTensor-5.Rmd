@@ -1,0 +1,99 @@
+---
+title: "5. Discretized Partial Least Squares (`dPLS`)"
+author:
+- name: Koki Tsuyuzaki
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Research
+  email: k.t.the-answer@hotmail.co.jp
+date: "`r Sys.Date()`"
+bibliography: bibliography.bib
+package: dcTensor
+output: rmarkdown::html_vignette
+vignette: |
+  %\VignetteIndexEntry{5. Discretized Partial Least Squares (`dPLS`)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+In this vignette, we consider approximating multiple matrices as a product of ternary (or non-negative) low-rank matrices (a.k.a., factor matrices).
+
+Test data is available from `toyModel`.
+
+```{r data, echo=TRUE}
+library("dcTensor")
+X <- dcTensor::toyModel("dPLS_Easy")
+```
+
+You will see that there are five blocks in the data matrix as follows.
+
+```{r data2, echo=TRUE, fig.height=2.7, fig.width=8}
+suppressMessages(library("fields"))
+layout(t(1:3))
+image.plot(X[[1]], main="X1", legend.mar=8)
+image.plot(X[[2]], main="X2", legend.mar=8)
+image.plot(X[[3]], main="X3", legend.mar=8)
+```
+
+# Semi-Ternary Simultaneous Matrix Factorization (STSMF)
+
+Here, we introduce the ternary regularization to take {-1,0,1} values in $V_{k}$ as below:
+
+$$
+\max{\mathrm{tr} \left( V_{j}'X_{j}'X_{k}V_{k} \right)}\ \mathrm{s.t.}\ j ≠k, V \in \{-1,0,1\},
+$$
+where $j$ and $k$ range from $1$ to $K$, $K$ is the number of matrices, $X_{k}$ ($N \times M_{k}$) is a $k$-th data matrix and $V_{k}$ ($M_{k} \times J$) is a $k$-th ternary loading matrix. In `dcTensor` package, the object function is optimized by combining gradient-descent algorithm [@svd] and ternary regularization.
+
+## Basic Usage
+
+In STSMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) are also available. For the details of arguments of dPLS, see `?dPLS`. After the calculation, various objects are returned by `dPLS`. STSMF is achieved by specifying the ternary regularization parameter as a large value like the below:
+
+```{r pls, echo=TRUE}
+set.seed(123456)
+out_dPLS <- dPLS(X, Ter_V=1E+5, J=3)
+str(out_dPLS, 2)
+```
+
+The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
+
+```{r conv_pls, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_dPLS$RecError[2:101]), type="b", main="Reconstruction Error")
+plot(log10(out_dPLS$RelChange[2:101]), type="b", main="Relative Change")
+```
+
+The products of $U_{k}$ and $V_{k}$ ($k = 1 \ldots K$) show whether the original data matrices are well-recovered by `dPLS`.
+
+```{r rec_pls, echo=TRUE, fig.height=5, fig.width=8}
+recX <- lapply(seq_along(X), function(x){
+  out_dPLS$U[[x]] %*% t(out_dPLS$V[[x]])
+})
+layout(rbind(1:3, 4:6))
+image.plot(t(X[[1]]))
+image.plot(t(X[[2]]))
+image.plot(t(X[[3]]))
+image.plot(t(recX[[1]]))
+image.plot(t(recX[[2]]))
+image.plot(t(recX[[3]]))
+```
+
+The histograms of $V_{k}$s show that all the factor matrices $V_{k}$ looks ternary.
+
+```{r u_v, echo=TRUE, fig.height=5, fig.width=8}
+layout(rbind(1:3, 4:6))
+hist(out_dPLS$U[[1]], breaks=100)
+hist(out_dPLS$U[[2]], breaks=100)
+hist(out_dPLS$U[[3]], breaks=100)
+hist(out_dPLS$V[[1]], breaks=100)
+hist(out_dPLS$V[[2]], breaks=100)
+hist(out_dPLS$V[[3]], breaks=100)
+```
+
+# Session Information {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
+
+# References

@@ -1,19 +1,18 @@
-\name{dGDSVD}
+\name{dSVD}
 \docType{methods}
-\alias{dGDSVD}
+\alias{dSVD}
 
 \title{
-Discretized Gradient Descent Singular Value Decomposition (dGDSVD)
+Discretized Gradient Descent Singular Value Decomposition (dSVD)
 }
 \description{
 The input data is assumed to be a matrix.
-dGDSVD decompose the matrix to two low-dimensional factor matices.
+dSVD decompose the matrix to two low-dimensional factor matices.
 }
 \usage{
-dGDSVD(X, M=NULL, pseudocount=.Machine$double.eps,
+dSVD(X, M=NULL, pseudocount=.Machine$double.eps,
     initU=NULL, initV=NULL, fixU=FALSE, fixV=FALSE,
-    Bin_U=1e-10, Bin_V=1e-10, Ter_U=1e-10, Ter_V=1e-10,
-    L1_U=1e-10, L1_V=1e-10, L2_U=1e-10, L2_V=1e-10, eta=1e+10, J = 3,
+    Ter_U=1e-10, L1_U=1e-10, L2_U=1e-10, eta=1e+10, J = 3,
     thr = 1e-10, num.iter = 100,
     viz = FALSE, figdir = NULL, verbose = FALSE)
 }
@@ -43,16 +42,7 @@ has M-rows and J-columns (Default: NULL).
 Whether the factor matrix V is updated in each iteration step
 (Default: FALSE).
 }
-\item{Bin_U}{
-Paramter for binary (0,1) regularitation (Default: 1e-10).
-}
-\item{Bin_V}{
-Paramter for binary (0,1) regularitation (Default: 1e-10).
-}
 \item{Ter_U}{
-Paramter for terary (0,1,2) regularitation (Default: 1e-10).
-}
-\item{Ter_V}{
 Paramter for terary (0,1,2) regularitation (Default: 1e-10).
 }
 \item{L1_U}{
@@ -60,15 +50,7 @@ Paramter for L1 regularitation (Default: 1e-10).
 This also works as small positive constant to prevent division by zero,
 so should be set as 0.
 }
-\item{L1_V}{
-Paramter for L1 regularitation (Default: 1e-10).
-This also works as small positive constant to prevent division by zero,
-so should be set as 0.
-}
 \item{L2_U}{
-Paramter for L2 regularitation (Default: 1e-10).
-}
-\item{L2_V}{
 Paramter for L2 regularitation (Default: 1e-10).
 }
 \item{eta}{
@@ -111,9 +93,9 @@ If verbose == TRUE, Error change rate is generated in console window.
 
 \examples{
 # Test data
-matdata <- toyModel(model = "NMF")
+matdata <- toyModel(model = "dSVD")
 
 # Simple usage
-out <- dGDSVD(matdata, J=5)
+out <- dSVD(matdata, J=2, num.iter=2)
 }
 \keyword{methods}

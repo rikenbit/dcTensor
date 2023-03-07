@@ -1,19 +1,16 @@
-dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
-    initU=NULL, initV=NULL, fixU=FALSE, fixV=FALSE,
-    Bin_U=1e-10, Bin_V=1e-10, Ter_U=1e-10, Ter_V=1e-10,
-    L1_U=1e-10, L1_V=1e-10, L2_U=1e-10, L2_V=1e-10, eta=1e+10, J = 3,
+dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
+    initV=NULL, fixV=FALSE, Ter_V=1e-10,
+    L1_V=1e-10, L2_V=1e-10, eta=1e+10, J = 3,
     thr = 1e-10, num.iter = 100,
     viz = FALSE, figdir = NULL, verbose = FALSE){
     # Argument check
-    chk <- .checkdGDSVD(X, M, pseudocount, initU, initV, fixU, fixV, 
-    	Bin_U, Bin_V, Ter_U, Ter_V,
-        L1_U, L1_V, L2_U, L2_V, eta, J,
-        thr, num.iter, viz, figdir, verbose)
+    chk <- .checkdPLS(X, M, pseudocount, initV, fixV,
+        Ter_V, L1_V, L2_V, eta, J, thr, num.iter, viz, figdir, verbose)
     X <- chk$X
     M <- chk$M
     pM <- chk$pM
     # Initialization of U, V
-    int <- .initdGDSVD(X, initU, initV, J, thr, verbose)
+    int <- .initdPLS(X, initV, J, thr, verbose)
     U <- int$U
     V <- int$V
     RecError <- int$RecError
@@ -22,25 +19,40 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     RelChange <- int$RelChange
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
+        # Before Update W, H_k
+        X_bar <- lapply(seq_along(X), function(x){
+            .recMatrix(U[[x]], V[[x]])
+        })
+        pre_Error <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
+            .recError(X[[x]], X_bar[[x]], notsqrt=TRUE)
+        }))))
         # Update U, V
-        X_bar <- .recMatrix(U, V)
-        pre_Error <- .recError(X, X_bar)
-		U <- .updateU_dGDSVD(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, eta, iter)
-		V <- .updateV_dGDSVD(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, eta, iter)
+        V <- .updateV_dPLS(X, pM, V, fixV, Ter_V, L1_V, L2_V, eta, iter)
+        U <- lapply(seq_along(X), function(x){
+            X[[x]] %*% V[[x]]
+        })
         # After Update U, V
         iter <- iter + 1
-        X_bar <- .recMatrix(U, V)
-        RecError[iter] <- .recError(X, X_bar)
-        TrainRecError[iter] <- .recError(M*X, M*X_bar)
-        TestRecError[iter] <- .recError((1-M)*X, (1-M)*X_bar)
+        X_bar <- lapply(seq_along(X), function(x){
+            .recMatrix(U[[x]], V[[x]])
+        })
+        RecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
+            .recError(X[[x]], X_bar[[x]], notsqrt=TRUE)
+        }))))
+        TrainRecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
+            .recError(M[[x]] * X[[x]], M[[x]] * X_bar[[x]], notsqrt=TRUE)
+        }))))
+        TestRecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
+            .recError((1-M[[x]]) * X[[x]], (1-M[[x]]) * X_bar[[x]], notsqrt=TRUE)
+        }))))
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
-            image.plot(X_bar)
+            lapply(X_bar, image.plot)
             dev.off()
         }
         if (viz && is.null(figdir)) {
-            image.plot(X_bar)
+            lapply(X_bar, image.plot)
         }
         if (verbose) {
             cat(paste0(iter-1, " / ", num.iter, " |Previous Error - Error| / Error = ",
@@ -52,14 +64,14 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     }
     if (viz && !is.null(figdir)) {
         png(filename = paste0(figdir, "/finish.png"))
-        image.plot(X_bar)
+        lapply(X_bar, image.plot)
         dev.off()
         png(filename = paste0(figdir, "/original.png"))
-        image.plot(X)
+            lapply(X, image.plot)
         dev.off()
     }
     if (viz && is.null(figdir)) {
-        image.plot(X_bar)
+        lapply(X_bar, image.plot)
     }
     names(RecError) <- c("offset", seq_len(iter-1))
     names(TrainRecError) <- c("offset", seq_len(iter-1))
@@ -72,51 +84,35 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         RelChange = RelChange)
 }
 
-.checkdGDSVD <- function(X, M, pseudocount, initU, initV, fixU, fixV,
-    Bin_U, Bin_V, Ter_U, Ter_V,
-    L1_U, L1_V, L2_U, L2_V, eta, J, thr, num.iter, viz, figdir, verbose){
-    stopifnot(is.matrix(X))
+.checkdPLS <- function(X, M, pseudocount, initV, fixV,
+        Ter_V, L1_V, L2_V, eta, J, thr, num.iter, viz, figdir, verbose){
+    if(length(X) < 2){
+        stop("input list X must have at least two datasets!")
+    }
     if(!is.null(M)){
-        if(!identical(dim(X), dim(M))){
+        dimX <- as.vector(unlist(lapply(X, function(x){dim(x)})))
+        dimM <- as.vector(unlist(lapply(M, function(x){dim(x)})))
+        if(!identical(dimX, dimM)){
             stop("Please specify the dimensions of X and M are same")
         }
     }else{
         M <- X
-        M[,] <- 1
-    }
-    stopifnot(is.numeric(pseudocount))
-    if(!is.null(initU)){
-        if(!identical(nrow(X), nrow(initU))){
-            stop("Please specify nrow(X) and nrow(initU) are same")
+        for(i in seq(length(X))){
+            M[[i]][] <- 1
         }
     }
+    stopifnot(is.numeric(pseudocount))
     if(!is.null(initV)){
         if(!identical(ncol(X), nrow(initV))){
             stop("Please specify ncol(X) and nrow(initV) are same")
         }
     }
-    stopifnot(is.logical(fixU))
     stopifnot(is.logical(fixV))
-    if(Bin_U < 0){
-        stop("Please specify the Bin_U that larger than 0")
-    }
-    if(Bin_V < 0){
-        stop("Please specify the Bin_V that larger than 0")
-    }
-    if(Ter_U < 0){
-        stop("Please specify the Ter_U that larger than 0")
-    }
     if(Ter_V < 0){
         stop("Please specify the Ter_V that larger than 0")
     }
-    if(L1_U < 0){
-        stop("Please specify the L1_U that larger than 0")
-    }
     if(L1_V < 0){
         stop("Please specify the L1_V that larger than 0")
-    }
-    if(L2_U < 0){
-        stop("Please specify the L2_U that larger than 0")
     }
     if(L2_V < 0){
         stop("Please specify the L2_V that larger than 0")
@@ -133,22 +129,26 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     }
     stopifnot(is.logical(verbose))
     pM <- M
-    X[which(X == 0)] <- pseudocount
-    pM[which(pM == 0)] <- pseudocount
+    lapply(seq_along(X), function(x){
+        X[[x]][which(X[[x]] == 0)] <<- pseudocount
+        pM[[x]][which(pM[[x]] == 0)] <<- pseudocount
+    })
     list(X=X, M=M, pM=pM)
 }
 
-.initdGDSVD <- function(X, initU, initV, J, thr, verbose){
-    if(is.null(initU)){
-        U <- matrix(runif(nrow(X)*J), nrow=nrow(X), ncol=J)
-    }else{
-        U <- initU
-    }
+.initdPLS <- function(X, initV, J, thr, verbose){
     if(is.null(initV)){
-        V <- matrix(runif(ncol(X)*J), nrow=ncol(X), ncol=J)
+        V <- lapply(seq_along(X), function(x){
+            tmp <- matrix(runif(ncol(X[[x]])*J),
+                nrow=ncol(X[[x]]), ncol=J)
+            .columnNorm(tmp)
+        })
     }else{
         V <- initV
     }
+    U <- lapply(seq_along(X), function(x){
+        X[[x]] %*% V[[x]]
+    })
     RecError = c()
     TrainRecError = c()
     TestRecError = c()
@@ -165,28 +165,19 @@ dGDSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         TestRecError=TestRecError, RelChange=RelChange)
 }
 
-.updateU_dGDSVD <- function(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, eta, iter){
-	if(!fixU){
-        stepSize <- eta / iter
-        grad <- X %*% t(X) %*% U %*% diag(ncol(U):1)
-        L1Term <- L1_U
-        L2Term <- L2_U * U
-        BinTerm <- Bin_U * (6 * U^2 - 6 * U + 1)
-        TerTerm <- Ter_U * (28 * U^6 - 12 * U^2)
-		U <- qr.Q(qr(U + stepSize * grad - L1Term - L2Term - BinTerm - TerTerm))
-	}
-	U
-}
-
-.updateV_dGDSVD <- function(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, eta, iter){
+.updateV_dPLS <- function(X, pM, V, fixV, Ter_V, L1_V, L2_V, eta, iter){
     if(!fixV){
         stepSize <- eta / iter
-        grad <- t(X) %*% X %*% V %*% diag(ncol(V):1)
-        L1Term <- L1_V
-        L2Term <- L2_V * V
-        BinTerm <- Bin_V * (6 * V^2 - 6 * V + 1)
-        TerTerm <- Ter_V * (28 * V^6 - 12 * V^2)
-        V <- qr.Q(qr(V + stepSize * grad - L1Term - L2Term - BinTerm - TerTerm))
+        for(i in seq_along(V)){
+            grad <- lapply(setdiff(seq_along(V), i), function(j){
+                t(X[[i]] * pM[[i]]) %*% (X[[j]] * pM[[j]]) %*% V[[j]] %*% diag(ncol(V[[j]]):1)
+            })
+            grad <- do.call("+", grad)
+            L1Term <- L1_V
+            L2Term <- L2_V * V[[i]]
+            TerTerm <- Ter_V * (3 * V[[i]]^5 - 4 * V[[i]]^3 + V[[i]])
+            V[[i]] <- .scaleQR(V[[i]] + stepSize * grad - L1Term - L2Term - TerTerm)
+        }
     }
     V
 }

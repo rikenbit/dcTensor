@@ -1,3 +1,14 @@
+   VERSION 1.0.0
+------------------------
+   o Changed the name of dGDSVD to dSVD
+   o Debugged dSVD
+   o Added model "SVD" in toyModel
+   o Added dsiNMF, djNMF, and dPLS for multiple matrices datasets
+   o Added dNTF and dNTD for single tensor data
+   o Added Vignette for dSVD
+   o Added Vignette for dsiNMF, djNMF, and dPLS
+   o Added Vignette for dNTF and dNTD
+
    VERSION 0.99.1
 ------------------------
    o Package released

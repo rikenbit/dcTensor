@@ -1,13 +1,19 @@
-importFrom(stats, runif)
+importFrom(stats, runif, rpois)
+importFrom(graphics, layout)
 importFrom(grDevices, dev.off, png)
 importFrom(methods, is)
 importFrom(MASS, ginv)
 importFrom(fields, image.plot)
-importFrom(rTensor, as.tensor, vec)
-importFrom(nnTensor, NMF)
+importFrom(rTensor, as.tensor, vec, cs_unfold, khatri_rao, rand_tensor, kronecker_list, fnorm, ttm)
+importFrom(nnTensor, NMF, recTensor, plotTensor3D)
 
 export(
     toyModel,
     dNMF,
-    dGDSVD
+    dSVD,
+    dsiNMF,
+    djNMF,
+    dPLS,
+    dNTF,
+    dNTD
     )

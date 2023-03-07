@@ -24,7 +24,7 @@ Z. Zhang, T. Li, C. Ding and X. Zhang, (2007). Binary Matrix Factorization with 
 }
 
 \keyword{ package }
-\seealso{\code{\link{toyModel}},\code{\link{dNMF}},\code{\link{dGDSVD}}}
+\seealso{\code{\link{toyModel}},\code{\link{dNMF}},\code{\link{dSVD}}}
 \examples{
 ls("package:dcTensor")
 }
