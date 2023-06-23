@@ -10,22 +10,27 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     viz = FALSE, figdir = NULL, verbose = FALSE){
     # Argument check
     algorithm <- match.arg(algorithm)
-    chk <- .checkdsiNMF(X, M, pseudocount, initW, initH, fixW, fixH, Bin_W, Bin_H, Ter_W, Ter_H, L1_W, L1_H, L2_W, L2_H, J, w,
+    .checkdsiNMF(X, M, pseudocount, initW, initH, fixW, fixH, Bin_W, Bin_H, Ter_W, Ter_H, L1_W, L1_H, L2_W, L2_H, J, w,
         p, thr, num.iter, viz, figdir, verbose)
-    X <- chk$X
-    M <- chk$M
-    pM <- chk$pM
-    fixH <- chk$fixH
-    w <- chk$w
-    K <- chk$K
     # Initialization of W, H
-    int <- .initdsiNMF(X, initW, initH, J, p, thr, algorithm, verbose)
+    int <- .initdsiNMF(X, M, pseudocount, fixH, w, initW, initH, J, p, thr, algorithm, verbose)
+    X <- int$X
+    M <- int$M
+    pM <- int$pM
+    M_NA <- int$M_NA
+    fixH <- int$fixH
+    w <- int$w
+    K <- int$K
     W <- int$W
     H <- int$H
     RecError <- int$RecError
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
+    BinTerm_W <- int$BinTerm_W
+    BinTerm_H <- int$BinTerm_H
+    TerTerm_W <- int$TerTerm_W
+    TerTerm_H <- int$TerTerm_H
     p <- int$p
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
@@ -62,7 +67,7 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
                 H[[k]] <- H[[k]] * (Hk_numer / Hk_denom)^.rho(p)
             }
         }
-        # After Update W, H_k
+        # After Update W, Hs
         iter <- iter + 1
         X_bar <- lapply(H, function(h){
             .recMatrix(W, h)
@@ -71,12 +76,17 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
             .recError(X[[x]], X_bar[[x]], notsqrt=TRUE)
         }))))
         TrainRecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
-            .recError(M[[x]]*X[[x]], M[[x]]*X_bar[[x]], notsqrt=TRUE)
+            .recError((1-M_NA[[x]]+M[[x]])*X[[x]], (1-M_NA[[x]]+M[[x]])*X_bar[[x]], notsqrt=TRUE)
         }))))
         TestRecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
-            .recError((1-M[[x]])*X[[x]], (1-M[[x]])*X_bar[[x]], notsqrt=TRUE)
+            .recError((M_NA[[x]]-M[[x]])*X[[x]], (M_NA[[x]]-M[[x]])*X_bar[[x]], notsqrt=TRUE)
         }))))
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
+        BinTerm_W[iter] <- .BinTerm_W_dsiNMF(W)
+        BinTerm_H[iter] <- .BinTerm_H_dsiNMF(H)
+        TerTerm_W[iter] <- .TerTerm_W_dsiNMF(W)
+        TerTerm_H[iter] <- .TerTerm_H_dsiNMF(H)
+        # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
             .imageplot_dsiNMF(X, W, H)
@@ -85,14 +95,17 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if (viz && is.null(figdir)) {
         .imageplot_dsiNMF(X, W, H)
         }
+        # Verbose Message
         if (verbose) {
             cat(paste0(iter-1, " / ", num.iter, " |Previous Error - Error| / Error = ",
                 RelChange[iter], "\n"))
         }
+        # Exception Handling
         if (is.nan(RelChange[iter])) {
             stop("NaN is generated. Please run again or change the parameters.\n")
         }
     }
+    # Visualization
     if (viz && !is.null(figdir)) {
         png(filename = paste0(figdir, "/finish.png"))
         .imageplot_dsiNMF(X, W, H)
@@ -101,15 +114,24 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (viz && is.null(figdir)) {
         .imageplot_dsiNMF(X, W, H)
     }
+    # Output
     names(RecError) <- c("offset", seq_len(iter-1))
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-    return(list(W = W, H = H,
+    names(BinTerm_W) <- c("offset", seq_len(iter-1))
+    names(BinTerm_H) <- c("offset", seq_len(iter-1))
+    names(TerTerm_W) <- c("offset", seq_len(iter-1))
+    names(TerTerm_H) <- c("offset", seq_len(iter-1))
+    list(W = W, H = H,
         RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange))
+        RelChange = RelChange,
+        BinTerm_W = BinTerm_W,
+        BinTerm_H = BinTerm_H,
+        TerTerm_W = TerTerm_W,
+        TerTerm_H = TerTerm_H)
 }
 
 .checkdsiNMF <- function(X, M, pseudocount, initW, initH, fixW, fixH, Bin_W, Bin_H, Ter_W, Ter_H, L1_W, L1_H, L2_W, L2_H, J, w,
@@ -124,11 +146,9 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if(!identical(dimX, dimM)){
             stop("Please specify the dimensions of X and M are same")
         }
-    }else{
-        M <- X
-        for(i in seq(length(X))){
-            M[[i]][] <- 1
-        }
+        lapply(seq(length(X)), function(i){
+            .checkZeroNA(X[[i]], M[[i]], type="matrix")
+        })
     }
     stopifnot(is.numeric(pseudocount))
     if(!is.null(initW)){
@@ -152,8 +172,6 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
                 stop("Please specify the length of fixH same as the length of X")
             }
         }
-    }else{
-        fixH <- rep(fixH, length=length(X))
     }
     stopifnot(length(Bin_W) == 1)
     stopifnot(length(Ter_W) == 1)
@@ -172,13 +190,9 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     stopifnot(all(unlist(lapply(L1_H, function(x){x > 0}))))
     stopifnot(all(unlist(lapply(L2_H, function(x){x > 0}))))
     stopifnot(is.numeric(J))
-    if(is.null(w)){
-        w <- rep(1, length=length(X))
-    }else{
+    if(!is.null(w)){
         if(length(X) != length(w)){
             stop("The length of weight vector must be same as that of input list X!")
-        }else{
-            w <- w / sum(w)
         }
     }
     stopifnot(is.numeric(p))
@@ -189,16 +203,35 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if(!is.character(figdir) && !is.null(figdir)){
         stop("Please specify the figdir as a string or NULL")
     }
-    pM <- M
-    lapply(seq_along(X), function(x){
-         X[[x]][which(X[[x]] == 0)] <<- pseudocount
-         pM[[x]][which(pM[[x]] == 0)] <<- pseudocount
-     })
-    K <- length(X)
-    list(X=X, M=M, pM=pM, w=w, fixH=fixH, K=K)
 }
 
-.initdsiNMF <- function(X, initW, initH, J, p, thr, algorithm, verbose){
+.initdsiNMF <- function(X, M, pseudocount, fixH, w, initW, initH, J, p, thr, algorithm, verbose){
+    K <- length(X)
+    if(is.logical(fixH)){
+        fixH <- rep(fixH, length=length(X))
+    }
+    if(is.null(w)){
+        w <- rep(1, length=length(X))
+    }
+    w <- w / sum(w)
+    # NA mask
+    M_NA <- list()
+    length(M_NA) <- length(X)
+    for(i in seq_along(X)){
+        M_NA[[i]] <- X[[i]]
+        M_NA[[i]][] <- 1
+        M_NA[[i]][which(is.na(X[[i]]))] <- 0
+    }
+    if(is.null(M)){
+        M <- M_NA
+    }
+    pM <- M
+    # Pseudo count
+    for(i in seq_along(X)){
+        X[[i]][which(is.na(X[[i]]))] <- pseudocount
+        X[[i]][which(X[[i]] == 0)] <- pseudocount
+        pM[[i]][which(pM[[i]] == 0)] <- pseudocount
+    }
     if(is.null(initW)){
         W <- matrix(runif(nrow(X[[1]])*J), nrow=nrow(X[[1]]), ncol=J)
     }else{
@@ -216,10 +249,18 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
+    BinTerm_W = c()
+    BinTerm_H = c()
+    TerTerm_W = c()
+    TerTerm_H = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
+    BinTerm_W[1] <- thr * 10
+    BinTerm_H[1] <- thr * 10
+    TerTerm_W[1] <- thr * 10
+    TerTerm_H[1] <- thr * 10
     # Algorithm
     if (algorithm == "Frobenius") {
         p = 0
@@ -236,8 +277,13 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (verbose) {
         cat("Iterative step is running...\n")
     }
-    list(W=W, H=H, RecError=RecError, TrainRecError=TrainRecError,
-        TestRecError=TestRecError, RelChange=RelChange, p=p)
+    list(X=X, M=M, pM=pM, M_NA=M_NA,
+        fixH=fixH, w=w, K=K,
+        W=W, H=H, RecError=RecError, TrainRecError=TrainRecError,
+        TestRecError=TestRecError, RelChange=RelChange,
+        BinTerm_W=BinTerm_W, BinTerm_H=BinTerm_H,
+        TerTerm_W=TerTerm_W, TerTerm_H=TerTerm_H,
+        p=p)
 }
 
 .imageplot_dsiNMF <- function(X, W, H){
@@ -249,4 +295,24 @@ dsiNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     lapply(seq_along(X), function(x){
         image.plot(t(W %*% t(H[[x]])))
     })
+}
+
+.BinTerm_W_dsiNMF <- function(W){
+    sum((W * (W - 1))^2)
+}
+
+.BinTerm_H_dsiNMF <- function(H){
+    do.call(sum, lapply(H, function(h){
+        sum((h * (h - 1))^2)
+    }))
+}
+
+.TerTerm_W_dsiNMF <- function(W){
+    sum((W * (W - 1) * (W - 2))^2)
+}
+
+.TerTerm_H_dsiNMF <- function(H){
+    do.call(sum, lapply(H, function(h){
+        sum((h * (h - 1) * (h - 2))^2)
+    }))
 }

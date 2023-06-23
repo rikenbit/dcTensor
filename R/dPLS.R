@@ -4,19 +4,22 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     thr = 1e-10, num.iter = 100,
     viz = FALSE, figdir = NULL, verbose = FALSE){
     # Argument check
-    chk <- .checkdPLS(X, M, pseudocount, initV, fixV,
+    .checkdPLS(X, M, pseudocount, initV, fixV,
         Ter_V, L1_V, L2_V, eta, J, thr, num.iter, viz, figdir, verbose)
-    X <- chk$X
-    M <- chk$M
-    pM <- chk$pM
     # Initialization of U, V
-    int <- .initdPLS(X, initV, J, thr, verbose)
+    int <- .initdPLS(X, M, pseudocount, fixV, initV, J, thr, verbose)
+    X <- int$X
+    M <- int$M
+    pM <- int$pM
+    M_NA <- int$M_NA
+    fixV <- int$fixV
     U <- int$U
     V <- int$V
     RecError <- int$RecError
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
+    TerTerm_V <- int$TerTerm_V
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
         # Before Update W, H_k
@@ -40,12 +43,14 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
             .recError(X[[x]], X_bar[[x]], notsqrt=TRUE)
         }))))
         TrainRecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
-            .recError(M[[x]] * X[[x]], M[[x]] * X_bar[[x]], notsqrt=TRUE)
+            .recError((1-M_NA[[x]]+M[[x]]) * X[[x]], (1-M_NA[[x]]+M[[x]]) * X_bar[[x]], notsqrt=TRUE)
         }))))
         TestRecError[iter] <- sqrt(sum(unlist(lapply(seq_along(X), function(x){
-            .recError((1-M[[x]]) * X[[x]], (1-M[[x]]) * X_bar[[x]], notsqrt=TRUE)
+            .recError((M_NA[[x]]-M[[x]]) * X[[x]], (M_NA[[x]]-M[[x]]) * X_bar[[x]], notsqrt=TRUE)
         }))))
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
+        TerTerm_V[iter] <- .TerTerm_V_dPLS(V)
+        # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
             lapply(X_bar, image.plot)
@@ -54,14 +59,17 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if (viz && is.null(figdir)) {
             lapply(X_bar, image.plot)
         }
+        # Verbose Message
         if (verbose) {
             cat(paste0(iter-1, " / ", num.iter, " |Previous Error - Error| / Error = ",
                 RelChange[iter], "\n"))
         }
+        # Exception Handling
         if (is.nan(RelChange[iter])) {
             stop("NaN is generated. Please run again or change the parameters.\n")
         }
     }
+    # Visualization
     if (viz && !is.null(figdir)) {
         png(filename = paste0(figdir, "/finish.png"))
         lapply(X_bar, image.plot)
@@ -73,15 +81,17 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (viz && is.null(figdir)) {
         lapply(X_bar, image.plot)
     }
+    # Output
     names(RecError) <- c("offset", seq_len(iter-1))
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-
+    names(TerTerm_V) <- c("offset", seq_len(iter-1))
     list(U = U, V = V, RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange)
+        RelChange = RelChange,
+        TerTerm_V=TerTerm_V)
 }
 
 .checkdPLS <- function(X, M, pseudocount, initV, fixV,
@@ -95,11 +105,9 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if(!identical(dimX, dimM)){
             stop("Please specify the dimensions of X and M are same")
         }
-    }else{
-        M <- X
-        for(i in seq(length(X))){
-            M[[i]][] <- 1
-        }
+        lapply(seq(length(X)), function(i){
+            .checkZeroNA(X[[i]], M[[i]], type="matrix")
+        })
     }
     stopifnot(is.numeric(pseudocount))
     if(!is.null(initV)){
@@ -128,15 +136,30 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         stop("Please specify the figdir as a string or NULL")
     }
     stopifnot(is.logical(verbose))
-    pM <- M
-    lapply(seq_along(X), function(x){
-        X[[x]][which(X[[x]] == 0)] <<- pseudocount
-        pM[[x]][which(pM[[x]] == 0)] <<- pseudocount
-    })
-    list(X=X, M=M, pM=pM)
 }
 
-.initdPLS <- function(X, initV, J, thr, verbose){
+.initdPLS <- function(X, M, pseudocount, fixV, initV, J, thr, verbose){
+    if(is.logical(fixV)){
+        fixV <- rep(fixV, length=length(X))
+    }
+    # NA mask
+    M_NA <- list()
+    length(M_NA) <- length(X)
+    for(i in seq_along(X)){
+        M_NA[[i]] <- X[[i]]
+        M_NA[[i]][] <- 1
+        M_NA[[i]][which(is.na(X[[i]]))] <- 0
+    }
+    if(is.null(M)){
+        M <- M_NA
+    }
+    pM <- M
+    # Pseudo count
+    for(i in seq_along(X)){
+        X[[i]][which(is.na(X[[i]]))] <- pseudocount
+        X[[i]][which(X[[i]] == 0)] <- pseudocount
+        pM[[i]][which(pM[[i]] == 0)] <- pseudocount
+    }
     if(is.null(initV)){
         V <- lapply(seq_along(X), function(x){
             tmp <- matrix(runif(ncol(X[[x]])*J),
@@ -153,22 +176,26 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
+    TerTerm_V = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
+    TerTerm_V[1] <- thr * 10
     if (verbose) {
         cat("Iterative step is running...\n")
     }
-    list(U=U, V=V, RecError=RecError,
+    list(X=X, M=M, pM=pM, M_NA=M_NA, fixV=fixV,
+        U=U, V=V, RecError=RecError,
         TrainRecError=TrainRecError,
-        TestRecError=TestRecError, RelChange=RelChange)
+        TestRecError=TestRecError, RelChange=RelChange,
+        TerTerm_V=TerTerm_V)
 }
 
 .updateV_dPLS <- function(X, pM, V, fixV, Ter_V, L1_V, L2_V, eta, iter){
-    if(!fixV){
-        stepSize <- eta / iter
-        for(i in seq_along(V)){
+    stepSize <- eta / iter
+    for(i in seq_along(V)){
+        if(!fixV[i]){
             grad <- lapply(setdiff(seq_along(V), i), function(j){
                 t(X[[i]] * pM[[i]]) %*% (X[[j]] * pM[[j]]) %*% V[[j]] %*% diag(ncol(V[[j]]):1)
             })
@@ -180,4 +207,10 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         }
     }
     V
+}
+
+.TerTerm_V_dPLS <- function(V){
+    do.call(sum, lapply(V, function(v){
+        sum(((v - 1) * v * (v + 1))^2)
+    }))
 }

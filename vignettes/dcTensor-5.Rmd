@@ -59,8 +59,8 @@ The reconstruction error (`RecError`) and relative error (`RelChange`, the amoun
 
 ```{r conv_pls, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dPLS$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_dPLS$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_dPLS$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dPLS$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The products of $U_{k}$ and $V_{k}$ ($k = 1 \ldots K$) show whether the original data matrices are well-recovered by `dPLS`.

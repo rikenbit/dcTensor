@@ -124,6 +124,10 @@ If verbose == TRUE, Error change rate is generated in console windos.
   TestRecError : The reconstruction error calculated by test set
   (missing values specified by M).
   RelChange : The relative change of the error.
+  BinTerm_W : The binary regularization term for W.
+  BinTerm_H : The binary regularization term for Hs.
+  TerTerm_W : The ternary regularization term for W.
+  TerTerm_H : The ternary regularization term for Hs.
 }
 
 \references{

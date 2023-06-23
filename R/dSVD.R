@@ -4,19 +4,21 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     thr = 1e-10, num.iter = 100,
     viz = FALSE, figdir = NULL, verbose = FALSE){
     # Argument check
-    chk <- .checkdSVD(X, M, pseudocount, initU, initV, fixU, fixV,
+    .checkdSVD(X, M, pseudocount, initU, initV, fixU, fixV,
         Ter_U, L1_U, L2_U, eta, J, thr, num.iter, viz, figdir, verbose)
-    X <- chk$X
-    M <- chk$M
-    pM <- chk$pM
     # Initialization of U, V
-    int <- .initdSVD(X, initU, initV, J, thr, verbose)
+    int <- .initdSVD(X, M, pseudocount, initU, initV, J, thr, verbose)
+    X <- int$X
+    M <- int$M
+    pM <- int$pM
+    M_NA <- int$M_NA
     U <- int$U
     V <- int$V
     RecError <- int$RecError
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
+    TerTerm_U <- int$TerTerm_U
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
         # Update U, V
@@ -28,9 +30,11 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         iter <- iter + 1
         X_bar <- .recMatrix(U, V)
         RecError[iter] <- .recError(X, X_bar)
-        TrainRecError[iter] <- .recError(M*X, M*X_bar)
-        TestRecError[iter] <- .recError((1-M)*X, (1-M)*X_bar)
+        TrainRecError[iter] <- .recError((1-M_NA+M)*X, (1-M_NA+M)*X_bar)
+        TestRecError[iter] <- .recError((M_NA-M)*X, (M_NA-M)*X_bar)
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
+        TerTerm_U[iter] <- .TerTerm_U_dSVD(U)
+        # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
             image.plot(X_bar)
@@ -39,14 +43,17 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if (viz && is.null(figdir)) {
             image.plot(X_bar)
         }
+        # Verbose Message
         if (verbose) {
             cat(paste0(iter-1, " / ", num.iter, " |Previous Error - Error| / Error = ",
                 RelChange[iter], "\n"))
         }
+        # Exception Handling
         if (is.nan(RelChange[iter])) {
             stop("NaN is generated. Please run again or change the parameters.\n")
         }
     }
+    # Visualization
     if (viz && !is.null(figdir)) {
         png(filename = paste0(figdir, "/finish.png"))
         image.plot(X_bar)
@@ -58,15 +65,17 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (viz && is.null(figdir)) {
         image.plot(X_bar)
     }
+    # Output
     names(RecError) <- c("offset", seq_len(iter-1))
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-
+    names(TerTerm_U) <- c("offset", seq_len(iter-1))
     list(U = U, V = V, RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange)
+        RelChange = RelChange,
+        TerTerm_U = TerTerm_U)
 }
 
 .checkdSVD <- function(X, M, pseudocount, initU, initV, fixU, fixV,
@@ -76,9 +85,7 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if(!identical(dim(X), dim(M))){
             stop("Please specify the dimensions of X and M are same")
         }
-    }else{
-        M <- X
-        M[,] <- 1
+        .checkZeroNA(X, M, type="matrix")
     }
     stopifnot(is.numeric(pseudocount))
     if(!is.null(initU)){
@@ -113,13 +120,21 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         stop("Please specify the figdir as a string or NULL")
     }
     stopifnot(is.logical(verbose))
-    pM <- M
-    X[which(X == 0)] <- pseudocount
-    pM[which(pM == 0)] <- pseudocount
-    list(X=X, M=M, pM=pM)
 }
 
-.initdSVD <- function(X, initU, initV, J, thr, verbose){
+.initdSVD <- function(X, M, pseudocount, initU, initV, J, thr, verbose){
+    # NA mask
+    M_NA <- X
+    M_NA[] <- 1
+    M_NA[which(is.na(X))] <- 0
+    if(is.null(M)){
+        M <- M_NA
+    }
+    pM <- M
+    # Pseudo count
+    X[which(is.na(X))] <- pseudocount
+    X[which(X == 0)] <- pseudocount
+    pM[which(pM == 0)] <- pseudocount
     if(is.null(initU)){
         U <- matrix(runif(nrow(X)*J), nrow=nrow(X), ncol=J)
     }else{
@@ -134,16 +149,20 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
+    TerTerm_U = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
+    TerTerm_U[1] <- thr * 10
     if (verbose) {
         cat("Iterative step is running...\n")
     }
-    list(U=U, V=V, RecError=RecError,
+    list(X=X, M=M, pM=pM, M_NA=M_NA,
+        U=U, V=V, RecError=RecError,
         TrainRecError=TrainRecError,
-        TestRecError=TestRecError, RelChange=RelChange)
+        TestRecError=TestRecError, RelChange=RelChange,
+        TerTerm_U=TerTerm_U)
 }
 
 .updateU_dSVD <- function(X, pM, U, V, fixU, Ter_U, L1_U, L2_U, eta, iter){
@@ -163,4 +182,8 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         V <- t(X * pM) %*% U
     }
     V
+}
+
+.TerTerm_U_dSVD <- function(U){
+    sum(((U + 1) * U * (U - 1))^2)
 }

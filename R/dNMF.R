@@ -7,17 +7,18 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     viz = FALSE, figdir = NULL, verbose = FALSE){
     # Argument check
     algorithm <- match.arg(algorithm)
-    chk <- .checkdNMF(X, M, pseudocount, initU, initV, fixU, fixV, 
-    	Bin_U, Bin_V, Ter_U, Ter_V,
+    .checkdNMF(X, M, pseudocount, initU, initV, fixU, fixV,
+        Bin_U, Bin_V, Ter_U, Ter_V,
         L1_U, L1_V, L2_U, L2_V, J,
         Beta, thr, num.iter, viz, figdir, verbose)
-    X <- chk$X
-    M <- chk$M
-    pM <- chk$pM
     # Initialization of U, V
     int <- .initdNMF(X, M, pseudocount, initU, initV, fixU, fixV,
     Bin_U, Bin_V, Ter_U, Ter_V,
     L1_U, L1_V, L2_U, L2_V, J, algorithm, Beta, thr, num.iter, viz, figdir, verbose)
+    X <- int$X
+    M <- int$M
+    pM <- int$pM
+    M_NA <- int$M_NA
     U <- int$U
     V <- int$V
     RecError <- int$RecError
@@ -25,20 +26,29 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
     Beta <- int$Beta
+    BinTerm_U <- int$BinTerm_U
+    BinTerm_V <- int$BinTerm_V
+    TerTerm_U <- int$TerTerm_U
+    TerTerm_V <- int$TerTerm_V
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
         # Update U, V
         X_bar <- .recMatrix(U, V)
         pre_Error <- .recError(X, X_bar)
-		U <- .updateU_dNMF(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, Beta)
-		V <- .updateV_dNMF(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, Beta)
+        U <- .updateU_dNMF(X, pM, U, V, fixU, Bin_U, Ter_U, L1_U, L2_U, Beta)
+        V <- .updateV_dNMF(X, pM, U, V, fixV, Bin_V, Ter_V, L1_V, L2_V, Beta)
         # After Update U, V
         iter <- iter + 1
         X_bar <- .recMatrix(U, V)
         RecError[iter] <- .recError(X, X_bar)
-        TrainRecError[iter] <- .recError(M*X, M*X_bar)
-        TestRecError[iter] <- .recError((1-M)*X, (1-M)*X_bar)
+        TrainRecError[iter] <- .recError((1-M_NA+M)*X, (1-M_NA+M)*X_bar)
+        TestRecError[iter] <- .recError((M_NA-M)*X, (M_NA-M)*X_bar)
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
+        BinTerm_U[iter] <- .BinTerm_U_dNMF(U)
+        BinTerm_V[iter] <- .BinTerm_V_dNMF(V)
+        TerTerm_U[iter] <- .TerTerm_U_dNMF(U)
+        TerTerm_V[iter] <- .TerTerm_V_dNMF(V)
+        # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
             image.plot(X_bar)
@@ -47,14 +57,17 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if (viz && is.null(figdir)) {
             image.plot(X_bar)
         }
+        # Verbose Message
         if (verbose) {
             cat(paste0(iter-1, " / ", num.iter, " |Previous Error - Error| / Error = ",
                 RelChange[iter], "\n"))
         }
+        # Exception Handling
         if (is.nan(RelChange[iter])) {
             stop("NaN is generated. Please run again or change the parameters.\n")
         }
     }
+    # Visualization
     if (viz && !is.null(figdir)) {
         png(filename = paste0(figdir, "/finish.png"))
         image.plot(X_bar)
@@ -66,15 +79,23 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (viz && is.null(figdir)) {
         image.plot(X_bar)
     }
+    # Output
     names(RecError) <- c("offset", seq_len(iter-1))
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-
+    names(BinTerm_U) <- c("offset", seq_len(iter-1))
+    names(BinTerm_V) <- c("offset", seq_len(iter-1))
+    names(TerTerm_U) <- c("offset", seq_len(iter-1))
+    names(TerTerm_V) <- c("offset", seq_len(iter-1))
     list(U = U, V = V, RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange)
+        RelChange = RelChange,
+        BinTerm_U = BinTerm_U,
+        BinTerm_V = BinTerm_V,
+        TerTerm_U = TerTerm_U,
+        TerTerm_V = TerTerm_V)
 }
 
 .checkdNMF <- function(X, M, pseudocount, initU, initV, fixU, fixV,
@@ -85,9 +106,7 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if(!identical(dim(X), dim(M))){
             stop("Please specify the dimensions of X and M are same")
         }
-    }else{
-        M <- X
-        M[,] <- 1
+        .checkZeroNA(X, M, type="matrix")
     }
     stopifnot(is.numeric(pseudocount))
     if(!is.null(initU)){
@@ -135,21 +154,36 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         stop("Please specify the figdir as a string or NULL")
     }
     stopifnot(is.logical(verbose))
-    pM <- M
-    X[which(X == 0)] <- pseudocount
-    pM[which(pM == 0)] <- pseudocount
-    list(X=X, M=M, pM=pM)
 }
 
 .initdNMF <- function(X, M, pseudocount, initU, initV, fixU, fixV,
     Bin_U, Bin_V, Ter_U, Ter_V,
     L1_U, L1_V, L2_U, L2_V, J, algorithm, Beta, thr, num.iter, viz, figdir, verbose){
+    # NA mask
+    M_NA <- X
+    M_NA[] <- 1
+    M_NA[which(is.na(X))] <- 0
+    if(is.null(M)){
+        M <- M_NA
+    }
+    pM <- M
+    # Pseudo count
+    X[which(is.na(X))] <- pseudocount
+    X[which(X == 0)] <- pseudocount
+    pM[which(pM == 0)] <- pseudocount
 	if(is.null(initU) || is.null(initV)){
 		tmp <- NMF(X=X, M=M, pseudocount=pseudocount, initU=initU, initV=initV, fixU=fixU, fixV=fixV, L1_U=L1_U, L1_V=L1_V, L2_U=L2_U, L2_V=L2_U, J=J, algorithm=algorithm, Beta=Beta, thr1=thr, num.iter=100)
-		Du <- diag(apply(tmp$U, 2, max))
-		Dv <- diag(apply(tmp$V, 2, max))
-		U <- tmp$U %*% diag(1/sqrt(diag(Du))) %*% sqrt(Dv)
-		V <- tmp$V %*% diag(1/sqrt(diag(Dv))) %*% sqrt(Du)
+        if(J == 1){
+            Du <- apply(tmp$U, 2, max)
+            Dv <- apply(tmp$V, 2, max)
+            U <- tmp$U / Dv
+            V <- tmp$V / Du
+        }else{
+            Du <- diag(apply(tmp$U, 2, max))
+            Dv <- diag(apply(tmp$V, 2, max))
+            U <- tmp$U %*% diag(1/sqrt(diag(Du))) %*% sqrt(Dv)
+            V <- tmp$V %*% diag(1/sqrt(diag(Dv))) %*% sqrt(Du)
+        }
 		UV <- list()
 		UV$U <- U
 		UV$V <- V
@@ -168,10 +202,18 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
+    BinTerm_U = c()
+    BinTerm_V = c()
+    TerTerm_U = c()
+    TerTerm_V = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
+    BinTerm_U[1] <- thr * 10
+    BinTerm_V[1] <- thr * 10
+    TerTerm_U[1] <- thr * 10
+    TerTerm_V[1] <- thr * 10
     if (algorithm == "Frobenius") {
         Beta = 2
     }
@@ -184,9 +226,12 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (verbose) {
         cat("Iterative step is running...\n")
     }
-    list(U=U, V=V, RecError=RecError,
+    list(X=X, M=M, pM=pM, M_NA=M_NA,
+        U=U, V=V, RecError=RecError,
         TrainRecError=TrainRecError,
         TestRecError=TestRecError, RelChange=RelChange,
+        BinTerm_U=BinTerm_U, BinTerm_V=BinTerm_V,
+        TerTerm_U=TerTerm_U, TerTerm_V=TerTerm_V,
         Beta=Beta)
 }
 
@@ -206,4 +251,20 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         V <- V * (numer / denom)^.rho(Beta)
     }
     V
+}
+
+.BinTerm_U_dNMF <- function(U){
+    sum((U * (U - 1))^2)
+}
+
+.BinTerm_V_dNMF <- function(V){
+    sum((V * (V - 1))^2)
+}
+
+.TerTerm_U_dNMF <- function(U){
+    sum((U * (U - 1) * (U - 2))^2)
+}
+
+.TerTerm_V_dNMF <- function(V){
+    sum((V * (V - 1) * (V - 2))^2)
 }

@@ -12,22 +12,25 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     # Argument check
     algorithm <- match.arg(algorithm)
     init <- match.arg(init)
-    chk <- .checkdNTF(X, M, pseudocount, initA, fixA,
+    .checkdNTF(X, M, pseudocount, initA, fixA,
         Bin_A, Ter_A, L1_A, L2_A, rank, Beta,
         thr, num.iter, viz, figdir, verbose)
-    X <- chk$X
-    M <- chk$M
-    pM <- chk$pM
-    fixA <- chk$fixA
-    N <- chk$N
     # Initialization of An
-    int <- .initdNTF(X, N, rank, init, initA, Bin_A, Ter_A, L1_A, L2_A, Beta,
+    int <- .initdNTF(X, M, pseudocount, fixA, rank, init, initA, Bin_A, Ter_A, L1_A, L2_A, Beta,
         algorithm, thr, verbose)
+    X <- int$X
+    M <- int$M
+    pM <- int$pM
+    M_NA <- int$M_NA
+    fixA <- int$fixA
+    N <- int$N
     A <- int$A
     RecError <- int$RecError
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
+    BinTerm_A <- int$BinTerm_A
+    TerTerm_A <- int$TerTerm_A
     Beta <- int$Beta
     algorithm <- int$algorithm
     iter <- 1
@@ -70,10 +73,12 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         iter <- iter + 1
         X_bar <- recTensor(rep(1, length = rank), A, idx=seq(N))
         RecError[iter] <- .recError(X, X_bar)
-        TrainRecError[iter] <- .recError(M*X, M*X_bar)
-        TestRecError[iter] <- .recError((1-M)*X, (1-M)*X_bar)
+        TrainRecError[iter] <- .recError((1-M_NA+M)*X, (1-M_NA+M)*X_bar)
+        TestRecError[iter] <- .recError((M_NA-M)*X, (M_NA-M)*X_bar)
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
-
+        BinTerm_A[iter] <- .BinTerm_A_dNTF(A)
+        TerTerm_A[iter] <- .TerTerm_A_dNTF(A)
+        # Visualization
         if (viz && !is.null(figdir) && N == 3) {
             png(filename = paste0(figdir, "/", iter, ".png"))
             plotTensor3D(X_bar)
@@ -82,14 +87,17 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if (viz && is.null(figdir) && N == 3) {
             plotTensor3D(X_bar)
         }
+        # Verbose Message
         if (verbose) {
             cat(paste0(iter-1, " / ", num.iter, " |Previous Error - Error| / Error = ",
                 RelChange[iter], "\n"))
         }
+        # Exception Handling
         if (is.nan(RelChange[iter])) {
             stop("NaN is generated. Please run again or change the parameters.\n")
         }
     }
+    # Visualization
     if (viz && !is.null(figdir) && N == 3) {
         png(filename = paste0(figdir, "/finish.png"))
         plotTensor3D(X_bar)
@@ -101,21 +109,25 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (viz && is.null(figdir) && N == 3) {
         plotTensor3D(X_bar)
     }
-    names(RecError) <- c("offset", seq_len(iter-1))
-    names(TrainRecError) <- c("offset", seq_len(iter-1))
-    names(TestRecError) <- c("offset", seq_len(iter-1))
-    names(RelChange) <- c("offset", seq_len(iter-1))
-    # normalization
+    # Normalization
     S <- apply(A[[N]], 1, function(an){
         norm(as.matrix(an), "F")
     })
     A[[N]] <- A[[N]] / S
-
-    return(list(S = S, A = A,
+    # Output
+    names(RecError) <- c("offset", seq_len(iter-1))
+    names(TrainRecError) <- c("offset", seq_len(iter-1))
+    names(TestRecError) <- c("offset", seq_len(iter-1))
+    names(RelChange) <- c("offset", seq_len(iter-1))
+    names(BinTerm_A) <- c("offset", seq_len(iter-1))
+    names(TerTerm_A) <- c("offset", seq_len(iter-1))
+    list(S = S, A = A,
         RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange))
+        RelChange = RelChange,
+        BinTerm_A = BinTerm_A,
+        TerTerm_A = TerTerm_A)
 }
 
 .checkdNTF <- function(X, M, pseudocount, initA, fixA,
@@ -126,9 +138,7 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         if(!identical(dim(X), dim(M))){
             stop("Please specify the dimensions of X and M are same")
         }
-    }else{
-        M <- X
-        M@data[] <- 1
+        .checkZeroNA(X, M, type="Tensor")
     }
     stopifnot(is.numeric(pseudocount))
     if(!is.null(initA)){
@@ -146,8 +156,6 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
                 stop("Please specify the length of fixA same as the order of X")
             }
         }
-    }else{
-        fixA <- rep(fixA, length=length(dim(X)))
     }
     stopifnot(length(Bin_A) == length(dim(X)))
     stopifnot(length(Ter_A) == length(dim(X)))
@@ -169,16 +177,26 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (verbose) {
         cat("Initialization step is running...\n")
     }
-    X <- .pseudocount(X, pseudocount)
-    pM <- .pseudocount(M, pseudocount)
-    N <- length(dim(X))
-    list(X=X, M=M, pM=pM, fixA=fixA, N=N)
 }
 
-.initdNTF <- function(X, N, rank, init, initA, Bin_A, Ter_A, L1_A, L2_A, Beta,
+.initdNTF <- function(X, M, pseudocount, fixA, rank, init, initA, Bin_A, Ter_A, L1_A, L2_A, Beta,
     algorithm, thr, verbose){
+    N <- length(dim(X))
     T1 <- NULL
     E <- NULL
+    fixA <- rep(fixA, length=length(dim(X)))
+    # NA mask
+    M_NA <- X
+    M_NA@data[] <- 1
+    M_NA@data[which(is.na(X@data))] <- 0
+    if(is.null(M)){
+        M <- M_NA
+    }
+    pM <- M
+    # Pseudo count
+    X@data[which(is.na(X@data))] <- pseudocount
+    X <- .pseudocount(X, pseudocount)
+    pM <- .pseudocount(M, pseudocount)
     if(is.null(initA)){
         A <- list()
         length(A) <- N
@@ -210,17 +228,18 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     }else{
         A <- initA
     }
-
     RecError = c()
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
-
+    BinTerm_A = c()
+    TerTerm_A = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
-
+    BinTerm_A[1] <- thr * 10
+    TerTerm_A[1] <- thr * 10
     if (algorithm == "Frobenius") {
         Beta = 2
         algorithm = "Beta"
@@ -236,5 +255,23 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     if (verbose) {
         cat("Iterative step is running...\n")
     }
-    list(A=A, RecError=RecError, TrainRecError=TrainRecError, TestRecError=TestRecError, RelChange=RelChange, Beta=Beta, algorithm=algorithm)
+    list(X=X, M=M, pM=pM, M_NA=M_NA,
+        fixA=fixA, N=N,
+        A=A, RecError=RecError,
+        TrainRecError=TrainRecError, TestRecError=TestRecError,
+        RelChange=RelChange,
+        BinTerm_A=BinTerm_A, TerTerm_A=TerTerm_A,
+        Beta=Beta, algorithm=algorithm)
+}
+
+.BinTerm_A_dNTF <- function(A){
+    do.call(sum, lapply(A, function(a){
+        sum((a * (a - 1))^2)
+    }))
+}
+
+.TerTerm_A_dNTF <- function(A){
+    do.call(sum, lapply(A, function(a){
+        sum((a * (a - 1) * (a - 2))^2)
+    }))
 }

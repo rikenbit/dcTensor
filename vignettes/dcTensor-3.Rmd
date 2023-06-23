@@ -64,8 +64,8 @@ The reconstruction error (`RecError`) and relative error (`RelChange`, the amoun
 
 ```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dsiNMF$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_dsiNMF$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_dsiNMF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dsiNMF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The products of $W$ and $H_{k}$s show whether the original data marices are well-recovered by `dsiNMF`.
@@ -122,8 +122,8 @@ str(out_dsiNMF2, 2)
 
 ```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dsiNMF2$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_dsiNMF2$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_dsiNMF2$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dsiNMF2$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The products of $W$ and $H_{k}$s show whether the original data is well-recovered by `dsiNMF`.

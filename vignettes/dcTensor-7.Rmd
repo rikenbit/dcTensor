@@ -53,8 +53,8 @@ The reconstruction error (`RecError`) and relative error (`RelChange`, the amoun
 
 ```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dNTD$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_dNTD$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_dNTD$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dNTD$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTD`.
@@ -100,8 +100,8 @@ str(out_dNTD2, 2)
 
 ```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dNTD2$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_dNTD2$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_dNTD2$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dNTD2$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTD`.

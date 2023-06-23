@@ -57,8 +57,8 @@ The reconstruction error (`RecError`) and relative error (`RelChange`, the amoun
 
 ```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_BMF$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_BMF$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_BMF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_BMF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The product of $U$ and $V$ shows whether the original data is well-recovered by `dNMF`.
@@ -129,8 +129,8 @@ str(out_SBMF, 2)
 
 ```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_SBMF$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_SBMF$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_SBMF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_SBMF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The product of $U$ and $V$ shows whether the original data is well-recovered by `dNMF`.
@@ -173,8 +173,8 @@ str(out_STMF, 2)
 
 ```{r conv_stmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_STMF$RecError[2:101]), type="b", main="Reconstruction Error")
-plot(log10(out_STMF$RelChange[2:101]), type="b", main="Relative Change")
+plot(log10(out_STMF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_STMF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
 The product of $U$ and $V$ shows that the original data is well-recovered by `dNMF`.
