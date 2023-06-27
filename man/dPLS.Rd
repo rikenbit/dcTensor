@@ -3,7 +3,7 @@
 \alias{dPLS}
 
 \title{
-Discretized Peartial Least Squares (dPLS)
+Discretized Partial Least Squares (dPLS)
 }
 \description{
 The input data is assumed to be a matrix.
