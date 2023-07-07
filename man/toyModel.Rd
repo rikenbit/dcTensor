@@ -23,7 +23,7 @@ Random number for setting set.seeds in the function (Default: 123).
 }
 
 \value{
-If model is specified as "dNMF" or "dSVD", a matrix is generated.
+If model is specified as "dNMF" or "dSVD" a matrix is generated.
 If model is specified as "dsiNMF_Easy", "dsiNMF_Hard",
 "dPLS_Easy", or "dPLS_Hard" three matrices are generated.
 Otherwise, a tensor is generated.

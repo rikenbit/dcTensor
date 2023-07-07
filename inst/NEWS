@@ -1,3 +1,7 @@
+VERSION 1.2.0
+------------------------
+   o {Binary,Ternary}-regularization terms are removed because of the calculation time issue
+
 VERSION 1.1.0
 ------------------------
    o {Binary,Ternary}-regularization terms can be tracked by the outputs such as BinTerm_U, TerTerm_V, ... etc

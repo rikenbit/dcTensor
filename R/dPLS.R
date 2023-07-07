@@ -19,7 +19,6 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
-    TerTerm_V <- int$TerTerm_V
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
         # Before Update W, H_k
@@ -49,7 +48,6 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
             .recError((M_NA[[x]]-M[[x]]) * X[[x]], (M_NA[[x]]-M[[x]]) * X_bar[[x]], notsqrt=TRUE)
         }))))
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
-        TerTerm_V[iter] <- .TerTerm_V_dPLS(V)
         # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
@@ -86,12 +84,10 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-    names(TerTerm_V) <- c("offset", seq_len(iter-1))
     list(U = U, V = V, RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange,
-        TerTerm_V=TerTerm_V)
+        RelChange = RelChange)
 }
 
 .checkdPLS <- function(X, M, pseudocount, initV, fixV,
@@ -176,20 +172,17 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
-    TerTerm_V = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
-    TerTerm_V[1] <- thr * 10
     if (verbose) {
         cat("Iterative step is running...\n")
     }
     list(X=X, M=M, pM=pM, M_NA=M_NA, fixV=fixV,
         U=U, V=V, RecError=RecError,
         TrainRecError=TrainRecError,
-        TestRecError=TestRecError, RelChange=RelChange,
-        TerTerm_V=TerTerm_V)
+        TestRecError=TestRecError, RelChange=RelChange)
 }
 
 .updateV_dPLS <- function(X, pM, V, fixV, Ter_V, L1_V, L2_V, eta, iter){
@@ -207,10 +200,4 @@ dPLS <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         }
     }
     V
-}
-
-.TerTerm_V_dPLS <- function(V){
-    do.call(sum, lapply(V, function(v){
-        sum(((v - 1) * v * (v + 1))^2)
-    }))
 }

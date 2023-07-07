@@ -29,8 +29,6 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
-    BinTerm_A <- int$BinTerm_A
-    TerTerm_A <- int$TerTerm_A
     Beta <- int$Beta
     algorithm <- int$algorithm
     iter <- 1
@@ -76,8 +74,6 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         TrainRecError[iter] <- .recError((1-M_NA+M)*X, (1-M_NA+M)*X_bar)
         TestRecError[iter] <- .recError((M_NA-M)*X, (M_NA-M)*X_bar)
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
-        BinTerm_A[iter] <- .BinTerm_A_dNTF(A)
-        TerTerm_A[iter] <- .TerTerm_A_dNTF(A)
         # Visualization
         if (viz && !is.null(figdir) && N == 3) {
             png(filename = paste0(figdir, "/", iter, ".png"))
@@ -119,15 +115,11 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-    names(BinTerm_A) <- c("offset", seq_len(iter-1))
-    names(TerTerm_A) <- c("offset", seq_len(iter-1))
     list(S = S, A = A,
         RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange,
-        BinTerm_A = BinTerm_A,
-        TerTerm_A = TerTerm_A)
+        RelChange = RelChange)
 }
 
 .checkdNTF <- function(X, M, pseudocount, initA, fixA,
@@ -232,14 +224,10 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
-    BinTerm_A = c()
-    TerTerm_A = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
-    BinTerm_A[1] <- thr * 10
-    TerTerm_A[1] <- thr * 10
     if (algorithm == "Frobenius") {
         Beta = 2
         algorithm = "Beta"
@@ -260,18 +248,5 @@ dNTF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         A=A, RecError=RecError,
         TrainRecError=TrainRecError, TestRecError=TestRecError,
         RelChange=RelChange,
-        BinTerm_A=BinTerm_A, TerTerm_A=TerTerm_A,
         Beta=Beta, algorithm=algorithm)
-}
-
-.BinTerm_A_dNTF <- function(A){
-    do.call(sum, lapply(A, function(a){
-        sum((a * (a - 1))^2)
-    }))
-}
-
-.TerTerm_A_dNTF <- function(A){
-    do.call(sum, lapply(A, function(a){
-        sum((a * (a - 1) * (a - 2))^2)
-    }))
 }

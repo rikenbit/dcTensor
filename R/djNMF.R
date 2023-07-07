@@ -37,12 +37,6 @@ djNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
-    BinTerm_W <- int$BinTerm_W
-    BinTerm_V <- int$BinTerm_V
-    BinTerm_H <- int$BinTerm_H
-    TerTerm_W <- int$TerTerm_W
-    TerTerm_V <- int$TerTerm_V
-    TerTerm_H <- int$TerTerm_H
     p <- int$p
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
@@ -106,12 +100,6 @@ djNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
             .recError((M_NA[[x]]-M[[x]])*X[[x]], (M_NA[[x]]-M[[x]])*X_bar[[x]], notsqrt=TRUE)
         }))))
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
-        BinTerm_W[iter] <- .BinTerm_W_djNMF(W)
-        BinTerm_V[iter] <- .BinTerm_V_djNMF(V)
-        BinTerm_H[iter] <- .BinTerm_H_djNMF(H)
-        TerTerm_W[iter] <- .TerTerm_W_djNMF(W)
-        TerTerm_V[iter] <- .TerTerm_V_djNMF(V)
-        TerTerm_H[iter] <- .TerTerm_H_djNMF(H)
         # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
@@ -145,23 +133,11 @@ djNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-    names(BinTerm_W) <- c("offset", seq_len(iter-1))
-    names(BinTerm_V) <- c("offset", seq_len(iter-1))
-    names(BinTerm_H) <- c("offset", seq_len(iter-1))
-    names(TerTerm_W) <- c("offset", seq_len(iter-1))
-    names(TerTerm_V) <- c("offset", seq_len(iter-1))
-    names(TerTerm_H) <- c("offset", seq_len(iter-1))
     list(W = W, V = V, H = H,
         RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange,
-        BinTerm_W = BinTerm_W,
-        BinTerm_V = BinTerm_V,
-        BinTerm_H = BinTerm_H,
-        TerTerm_W = TerTerm_W,
-        TerTerm_V = TerTerm_V,
-        TerTerm_H = TerTerm_H)
+        RelChange = RelChange)
 }
 
 .checkdjNMF <- function(X, M, pseudocount, initW, initV, initH, fixW, fixV, fixH, Bin_W, Bin_V, Bin_H, Ter_W, Ter_V, Ter_H,
@@ -316,22 +292,10 @@ djNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
-    BinTerm_W = c()
-    BinTerm_V = c()
-    BinTerm_H = c()
-    TerTerm_W = c()
-    TerTerm_V = c()
-    TerTerm_H = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
-    BinTerm_W[1] <- thr * 10
-    BinTerm_V[1] <- thr * 10
-    BinTerm_H[1] <- thr * 10
-    TerTerm_W[1] <- thr * 10
-    TerTerm_V[1] <- thr * 10
-    TerTerm_H[1] <- thr * 10
     # Algorithm
     if (algorithm == "Frobenius") {
         p = 0
@@ -351,8 +315,6 @@ djNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     list(X=X, M=M, pM=pM, M_NA=M_NA,
         fixV=fixV, fixH=fixH, w=w, K=K,
         W=W, V=V, H=H, RecError=RecError, TrainRecError=TrainRecError, TestRecError=TestRecError, RelChange=RelChange,
-        BinTerm_W=BinTerm_W, BinTerm_V=BinTerm_V, BinTerm_H=BinTerm_H,
-        TerTerm_W=TerTerm_W, TerTerm_V=TerTerm_V, TerTerm_H=TerTerm_H,
         p=p)
 }
 
@@ -368,36 +330,4 @@ djNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     lapply(seq_along(X), function(x){
         image.plot(t(V[[x]] %*% t(H[[x]])))
     })
-}
-
-.BinTerm_W_djNMF <- function(W){
-    sum((W * (W - 1))^2)
-}
-
-.BinTerm_V_djNMF <- function(V){
-    do.call(sum, lapply(V, function(v){
-        sum((v * (v - 1))^2)
-    }))
-}
-
-.BinTerm_H_djNMF <- function(H){
-    do.call(sum, lapply(H, function(h){
-        sum((h * (h - 1))^2)
-    }))
-}
-
-.TerTerm_W_djNMF <- function(W){
-    sum((W * (W - 1) * (W - 2))^2)
-}
-
-.TerTerm_V_djNMF <- function(V){
-    do.call(sum, lapply(V, function(v){
-        sum((v * (v - 1) * (v - 2))^2)
-    }))
-}
-
-.TerTerm_H_djNMF <- function(H){
-    do.call(sum, lapply(H, function(h){
-        sum((h * (h - 1) * (h - 2))^2)
-    }))
 }

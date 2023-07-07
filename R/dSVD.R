@@ -18,7 +18,6 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError <- int$TrainRecError
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
-    TerTerm_U <- int$TerTerm_U
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
         # Update U, V
@@ -33,7 +32,6 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         TrainRecError[iter] <- .recError((1-M_NA+M)*X, (1-M_NA+M)*X_bar)
         TestRecError[iter] <- .recError((M_NA-M)*X, (M_NA-M)*X_bar)
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
-        TerTerm_U[iter] <- .TerTerm_U_dSVD(U)
         # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
@@ -70,12 +68,10 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-    names(TerTerm_U) <- c("offset", seq_len(iter-1))
     list(U = U, V = V, RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange,
-        TerTerm_U = TerTerm_U)
+        RelChange = RelChange)
 }
 
 .checkdSVD <- function(X, M, pseudocount, initU, initV, fixU, fixV,
@@ -149,20 +145,17 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
-    TerTerm_U = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
-    TerTerm_U[1] <- thr * 10
     if (verbose) {
         cat("Iterative step is running...\n")
     }
     list(X=X, M=M, pM=pM, M_NA=M_NA,
         U=U, V=V, RecError=RecError,
         TrainRecError=TrainRecError,
-        TestRecError=TestRecError, RelChange=RelChange,
-        TerTerm_U=TerTerm_U)
+        TestRecError=TestRecError, RelChange=RelChange)
 }
 
 .updateU_dSVD <- function(X, pM, U, V, fixU, Ter_U, L1_U, L2_U, eta, iter){
@@ -182,8 +175,4 @@ dSVD <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         V <- t(X * pM) %*% U
     }
     V
-}
-
-.TerTerm_U_dSVD <- function(U){
-    sum(((U + 1) * U * (U - 1))^2)
 }

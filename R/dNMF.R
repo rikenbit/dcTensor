@@ -26,10 +26,6 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TestRecError <- int$TestRecError
     RelChange <- int$RelChange
     Beta <- int$Beta
-    BinTerm_U <- int$BinTerm_U
-    BinTerm_V <- int$BinTerm_V
-    TerTerm_U <- int$TerTerm_U
-    TerTerm_V <- int$TerTerm_V
     iter <- 1
     while ((RecError[iter] > thr) && (iter <= num.iter)) {
         # Update U, V
@@ -44,10 +40,6 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         TrainRecError[iter] <- .recError((1-M_NA+M)*X, (1-M_NA+M)*X_bar)
         TestRecError[iter] <- .recError((M_NA-M)*X, (M_NA-M)*X_bar)
         RelChange[iter] <- abs(pre_Error - RecError[iter]) / RecError[iter]
-        BinTerm_U[iter] <- .BinTerm_U_dNMF(U)
-        BinTerm_V[iter] <- .BinTerm_V_dNMF(V)
-        TerTerm_U[iter] <- .TerTerm_U_dNMF(U)
-        TerTerm_V[iter] <- .TerTerm_V_dNMF(V)
         # Visualization
         if (viz && !is.null(figdir)) {
             png(filename = paste0(figdir, "/", iter-1, ".png"))
@@ -84,18 +76,10 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     names(TrainRecError) <- c("offset", seq_len(iter-1))
     names(TestRecError) <- c("offset", seq_len(iter-1))
     names(RelChange) <- c("offset", seq_len(iter-1))
-    names(BinTerm_U) <- c("offset", seq_len(iter-1))
-    names(BinTerm_V) <- c("offset", seq_len(iter-1))
-    names(TerTerm_U) <- c("offset", seq_len(iter-1))
-    names(TerTerm_V) <- c("offset", seq_len(iter-1))
     list(U = U, V = V, RecError = RecError,
         TrainRecError = TrainRecError,
         TestRecError = TestRecError,
-        RelChange = RelChange,
-        BinTerm_U = BinTerm_U,
-        BinTerm_V = BinTerm_V,
-        TerTerm_U = TerTerm_U,
-        TerTerm_V = TerTerm_V)
+        RelChange = RelChange)
 }
 
 .checkdNMF <- function(X, M, pseudocount, initU, initV, fixU, fixV,
@@ -202,18 +186,10 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     TrainRecError = c()
     TestRecError = c()
     RelChange = c()
-    BinTerm_U = c()
-    BinTerm_V = c()
-    TerTerm_U = c()
-    TerTerm_V = c()
     RecError[1] <- thr * 10
     TrainRecError[1] <- thr * 10
     TestRecError[1] <- thr * 10
     RelChange[1] <- thr * 10
-    BinTerm_U[1] <- thr * 10
-    BinTerm_V[1] <- thr * 10
-    TerTerm_U[1] <- thr * 10
-    TerTerm_V[1] <- thr * 10
     if (algorithm == "Frobenius") {
         Beta = 2
     }
@@ -230,8 +206,6 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
         U=U, V=V, RecError=RecError,
         TrainRecError=TrainRecError,
         TestRecError=TestRecError, RelChange=RelChange,
-        BinTerm_U=BinTerm_U, BinTerm_V=BinTerm_V,
-        TerTerm_U=TerTerm_U, TerTerm_V=TerTerm_V,
         Beta=Beta)
 }
 
@@ -253,18 +227,3 @@ dNMF <- function(X, M=NULL, pseudocount=.Machine$double.eps,
     V
 }
 
-.BinTerm_U_dNMF <- function(U){
-    sum((U * (U - 1))^2)
-}
-
-.BinTerm_V_dNMF <- function(V){
-    sum((V * (V - 1))^2)
-}
-
-.TerTerm_U_dNMF <- function(U){
-    sum((U * (U - 1) * (U - 2))^2)
-}
-
-.TerTerm_V_dNMF <- function(V){
-    sum((V * (V - 1) * (V - 2))^2)
-}
