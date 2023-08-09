@@ -6,8 +6,14 @@
 Discretized Non-negative Matrix Factorization Algorithms (dNMF)
 }
 \description{
-The input data is assumed to be a non-negative matrix.
-dNMF decompose the matrix to two low-dimensional factor matices.
+This function is the discretized version of nnTensor::NMF.
+The input data X is assumed to be a non-negative matrix
+and decomposed to a matrix product U V'.
+Unlike regular NMF, in dNMF,
+U and V are estimated by adding binary regularization
+so that the values are 0 or 1 as much as possible.
+Likewise, U and V are estimated by adding ternary regularization
+so that the values are 0, 1, or 2 as much as possible.
 }
 \usage{
 dNMF(X, M=NULL, pseudocount=.Machine$double.eps,

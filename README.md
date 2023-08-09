@@ -8,20 +8,69 @@ https://cran.r-project.org/package=dcTensor)
 [![:total status badge](https://rikenbit.r-universe.dev/badges/:total)](https://rikenbit.r-universe.dev)
 [![dcTensor status badge](https://rikenbit.r-universe.dev/badges/dcTensor)](https://rikenbit.r-universe.dev)
 ![GitHub Actions](https://github.com/rikenbit/dcTensor/actions/workflows/build_test_push.yml/badge.svg)
+[![status](https://joss.theoj.org/papers/41a68242a41f762bd768ff44fc3b6b97/status.svg)](https://joss.theoj.org/papers/41a68242a41f762bd768ff44fc3b6b97)
 
 # dcTensor
-R package for Discrete Matrix/Tensor Decomposition
 
-Installation
-======
+dcTensor is an R package for Discrete Matrix/Tensor Decomposition.
+dcTensor provides the discretized version of matrix and tensor decomposition
+algorithms such as:
+
+- Discretized Non-negative Matrix Factorization Algorithms (dNMF)
+- Discretized Singular Value Decomposition (dSVD)
+- Discretized Simultaneous Non-negative Matrix Factorization Algorithms (dsiNMF)
+- Discretized Joint Non-negative Matrix Factorization Algorithms (djNMF)
+- Discretized Partial Least Squares (dPLS)
+- Discretized Non-negative CP Decomposition Algorithms (dNTF)
+- Discretized Non-negative Tucker Decomposition Algorithms (dNTD)
+
+Here "discretized" means that the factor matrices extracted from the data
+are estimated with discretizing regularization,
+so that the values are binary (e.g., {0,1}) or ternary (e.g., {0,1,2}),
+as much as possible.
+Binary data analysis is recently featured in some data science domains
+such as market basket data, document-term data, Web click-stream data,
+DNA microarray expression profiles,
+or protein-protein complex interaction networks.
+
+# Installation (for users)
+
+To install dcTensor from CRAN, type as follows:
+
+~~~~
+install.packages("dcTensor")
+~~~~
+
+# Installation (for developers)
+
+To install the latest dcTensor from GitHub, type as follows:
+
 ~~~~
 git clone https://github.com/rikenbit/dcTensor/
 R CMD INSTALL dcTensor
 ~~~~
+
 or type the code below in the R console window
+
 ~~~~
 library(devtools)
 devtools::install_github("rikenbit/dcTensor")
+~~~~
+
+# How to perform dcTensor
+For the details of dcTensor's functions, see the help page of each function as follows.
+
+~~~~
+library("dcTensor")
+
+?toyModel
+?dNMF
+?dSVD
+?dsiNMF
+?djNMF
+?dPLS
+?dNTF
+?dNTD
 ~~~~
 
 References
@@ -54,6 +103,12 @@ References
      - Phan, A. H. et al., Fast and efficient algorithms for nonnegative Tucker decomposition, ISNN 2008, 772-782, 2008
    - *Fast HALS*
      - Phan, A. H. et al., Extended HALS algorithm for nonnegative Tucker decomposition and its applications for multiway analysis and classification, Neurocomputing, 74(11), 1956-1969, 2011
+
+## Contributing
+
+If you have suggestions for how `dcTensor` could be improved, or want to report a bug, open an issue! We'd love all and any contributions.
+
+For more, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## Authors
 - Koki Tsuyuzaki

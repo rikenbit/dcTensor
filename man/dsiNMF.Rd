@@ -6,9 +6,16 @@
 Discretized Simultaneous Non-negative Matrix Factorization Algorithms (dsiNMF)
 }
 \description{
-The input data objects are assumed to be non-negative matrices.
-dsiNMF decompose the matrices to two low-dimensional factor
-matices simultaneously.
+This function is the discretized version of nnTensor::siNMF.
+The input data objects are assumed to be a list containing multiple non-negative matrices (X_1, X_2, ..., X_K),
+and decomposed to multiple matrix products (W H_1', W H_2', ..., W H_K'),
+where W is common across all the data matrices
+but each H_k (k=1..K) is specific in each X_k.
+Unlike regular siNMF, in dsiNMF,
+W and H_k are estimated by adding binary regularization
+so that the values are 0 or 1 as much as possible.
+Likewise, W and H_k are estimated by adding ternary regularization
+so that the values are 0, 1, or 2 as much as possible.
 }
 \usage{
 dsiNMF(X, M=NULL, pseudocount=.Machine$double.eps,

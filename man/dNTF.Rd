@@ -6,9 +6,15 @@
 Discretized Non-negative CP Decomposition Algorithms (dNTF)
 }
 \description{
-The input data is assumed to be non-negative tensor.
-dNTF decompose the tensor to the diagonal core tensor (S) and low-dimensional
-factor matices (A).
+This function is the discretized version of nnTensor::NTF.
+The input data X is assumed to be a non-negative tensor
+and decomposed to a product of a diagonal core tensor (S) and
+low-dimensional factor matrices (A_k, k=1..K).
+Unlike regular NTF, in dNTF,
+each A_k is estimated by adding binary regularization
+so that the values are 0 or 1 as much as possible.
+Likewise, each A_k are estimated by adding ternary regularization
+so that the values are 0, 1, or 2 as much as possible.
 }
 \usage{
 dNTF(X, M=NULL, pseudocount=.Machine$double.eps,
@@ -29,11 +35,12 @@ dNTF(X, M=NULL, pseudocount=.Machine$double.eps,
 K-order input tensor which has I_1, I_2, ..., and I_K dimensions.
 }
   \item{M}{
-K-order mask tensor which has I_1, I_2, ..., and I_K dimensions. If the mask tensor has
-missing values, specify the element as 0 (otherwise 1).
+K-order mask tensor which has I_1, I_2, ..., and I_K dimensions.
+If the mask tensor has missing values, specify the element as 0 (otherwise 1).
 }
   \item{pseudocount}{
-The pseudo count to avoid zero division, when the element is zero (Default: Machine Epsilon).
+The pseudo count to avoid zero division, when the element is zero
+(Default: Machine Epsilon).
 }
   \item{initA}{
 A list containing the initial values of K factor matrices

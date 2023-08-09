@@ -6,7 +6,7 @@
 Toy model data for using dNMF, dSVD, dsiNMF, djNMF, dPLS, dNTF, and dNTD
 }
 \description{
-The data is used for confirming the algorithm are properly working.
+The data is used to confirm that the algorithm are properly working.
 }
 \usage{
 toyModel(model = "dNMF", seeds=123)

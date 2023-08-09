@@ -3,11 +3,16 @@
 \alias{dSVD}
 
 \title{
-Discretized Gradient Descent Singular Value Decomposition (dSVD)
+Discretized Singular Value Decomposition (dSVD)
 }
 \description{
-The input data is assumed to be a matrix.
-dSVD decompose the matrix to two low-dimensional factor matices.
+This function is the discretized version of SVD.
+The input data X is decomposed to a matrix product U V'.
+Unlike regular SVD, in dSVD,
+U and V are estimated by adding binary regularization
+so that the values are 0 or 1 as much as possible.
+Likewise, U and V are estimated by adding ternary regularization
+so that the values are -1, 0, or 1 as much as possible.
 }
 \usage{
 dSVD(X, M=NULL, pseudocount=.Machine$double.eps,
@@ -43,7 +48,7 @@ Whether the factor matrix V is updated in each iteration step
 (Default: FALSE).
 }
 \item{Ter_U}{
-Paramter for terary (0,1,2) regularitation (Default: 1e-10).
+Paramter for terary (-1,0,1) regularitation (Default: 1e-10).
 }
 \item{L1_U}{
 Paramter for L1 regularitation (Default: 1e-10).

@@ -6,9 +6,15 @@
 Discretized Non-negative Tucker Decomposition Algorithms (dNTD)
 }
 \description{
-The input data is assumed to be non-negative tensor.
-dNTD decompose the tensor to the dense core tensor (S) and low-dimensional
-factor matices (A).
+This function is the discretized version of nnTensor::NTD.
+The input data X is assumed to be a non-negative tensor
+and decomposed to a product of a dense core tensor (S) and
+low-dimensional factor matrices (A_k, k=1..K).
+Unlike regular NTD, in dNTD,
+each A_k is estimated by adding binary regularization
+so that the values are 0 or 1 as much as possible.
+Likewise, each A_k are estimated by adding ternary regularization
+so that the values are 0, 1, or 2 as much as possible.
 }
 \usage{
 dNTD(X, M=NULL, pseudocount=.Machine$double.eps,
@@ -31,11 +37,12 @@ dNTD(X, M=NULL, pseudocount=.Machine$double.eps,
 K-order input tensor which has I_1, I_2, ..., and I_K dimensions.
 }
   \item{M}{
-K-order mask tensor which has I_1, I_2, ..., and I_K dimensions. If the mask tensor has
-missing values, specify the element as 0 (otherwise 1).
+K-order mask tensor which has I_1, I_2, ..., and I_K dimensions.
+If the mask tensor has missing values, specify the element as 0 (otherwise 1).
 }
   \item{pseudocount}{
-The pseudo count to avoid zero division, when the element is zero (Default: Machine Epsilon).
+The pseudo count to avoid zero division, when the element is zero
+(Default: Machine Epsilon).
 }
   \item{initS}{
 The initial values of core tensor which has I_1, I_2, ..., and I_K dimensions
@@ -78,7 +85,8 @@ The vector of the modes on which to perform the decomposition
 (Default: 1:K <all modes>).
 }
   \item{algorithm}{
-dNTD algorithms. "Frobenius", "KL", "IS", and "Beta" are available (Default: "Frobenius").
+dNTD algorithms. "Frobenius", "KL", "IS", and "Beta" are available
+(Default: "Frobenius").
 }
   \item{init}{
 The initialization algorithms. "NMF", "ALS", and "Random" are available

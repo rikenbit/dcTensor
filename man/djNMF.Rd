@@ -6,8 +6,17 @@
 Discretized Joint Non-negative Matrix Factorization Algorithms (djNMF)
 }
 \description{
-The input data objects are assumed to be non-negative matrices.
-djNMF decompose the matrices to two low-dimensional factor matices simultaneously.
+This function is the discretized version of nnTensor::jNMF.
+The input data objects are assumed to be a list containing multiple non-negative matrices (X_1, X_2, ..., X_K),
+and decomposed to multiple matrix products
+((W + V_1) H_1', (W + V_2) H_2', ..., (W + V_K) H_K'),
+where W is common across all the data matrices
+but each V_k or H_k (k=1..K) is specific in each X_k.
+Unlike regular jNMF, in djNMF,
+W, V_k, and H_k are estimated by adding binary regularization
+so that the values are 0 or 1 as much as possible.
+Likewise, W, V_k, and H_k are estimated by adding ternary regularization
+so that the values are 0, 1, or 2 as much as possible.
 }
 \usage{
 djNMF(X, M=NULL, pseudocount=.Machine$double.eps,
