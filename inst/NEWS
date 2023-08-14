@@ -1,3 +1,7 @@
+VERSION 1.2.1
+------------------------
+   o Debugged tests
+
 VERSION 1.2.0
 ------------------------
    o {Binary,Ternary}-regularization terms are removed because of the calculation time issue

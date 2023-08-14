@@ -1,5 +1,7 @@
-X <- dcTensor::toyModel("dPLS_Easy")
+test_that("dPLS", {
+	X <- dcTensor::toyModel("dPLS_Easy")
 
-out <- dPLS(X, J=3, num.iter=2)
+	out <- dPLS(X, J=3, num.iter=2)
 
-expect_equivalent(length(out), 7)
+	expect_equivalent(length(out), 6)
+})
