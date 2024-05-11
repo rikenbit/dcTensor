@@ -1,5 +1,5 @@
 ---
-title: "7. Discretized Non-negative Tucker Decomposition (`dNTD`)"
+title: "6. Discretized Non-negative Tensor Factorization (`dNTF`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
@@ -10,7 +10,7 @@ bibliography: bibliography.bib
 package: dcTensor
 output: rmarkdown::html_vignette
 vignette: |
-  %\VignetteIndexEntry{7. Discretized Non-negative Tucker Decomposition (`dNTD`)}
+  %\VignetteIndexEntry{6. Discretized Non-negative Tensor Factorization (`dNTF`)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -35,44 +35,49 @@ plotTensor3D(X)
 
 # Binary Tensor Factorization (BTF)
 
-Here, we introduce a non-negative tensor decomposition method, non-negative Tucker decomposition (NTD [@ntd; @amari]). The difference with the NTF is that different ranks can be specified for factor matrices such as $A_1$ ($J1 \times N$), $A_2$ ($J2 \times M$), and $A_3$ ($J3 \times L$) and that the core tensor can have non-negative values in the non-diagonal elements. This degree of freedom will show that NTD fits the second set of data well. For the details, see `NTD` function of [nnTensor](https://cran.r-project.org/package=nnTensor) package.
+To decompose a binary tensor ($\mathcal{X}$), non-negative CP decomposition (a.k.a. non-negative tensor factorization; NTF [@ntf; @amari]) can be applied. NTF appoximates $\mathcal{X}$ ($N \times M \times L$) as the mode-product of a core tensor $S$ ($J \times J \times J$) and factor matrices $A_1$ ($J \times N$), $A_2$ ($J \times M$), and $A_3$ ($J \times L$).
+
+$$
+\mathcal{X} \approx \mathcal{S} \times_{1} A_1 \times_{2} A_2 \times_{3} A_3\ \mathrm{s.t.}\ \mathcal{S} \geq 0, A_{k} \geq 0\ (k=1 \ldots 3)
+$$
+
+Note that \times_{k} is the mode-$k$ product [@amari] and the core tensor $S$ has non-negative values only in the diagonal element. For the details, see `NTF` function of [nnTensor](https://cran.r-project.org/package=nnTensor) package.
+
 
 ## Basic Usage
 
-In BTF by NTD, rank parameters are needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNTD, see `?dNTD`. After the calculation, various objects are returned by `dNTD`. BTF is achieved by specifying the binary regularization parameter as a large value like the below:
+In BTF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNTF, see `?dNTF`. After the calculation, various objects are returned by `dNTF`. BTF is achieved by specifying the binary regularization parameter as a large value like the below:
 
-```{r bmf, echo=TRUE}
+```{r bmf, echo=TRUE, fig.height=4, fig.width=8}
 set.seed(123456)
-out_dNTD <- dNTD(X, Bin_A=c(1e+6, 1e+6, 1e+6), thr=1e-20, rank=c(4,4,4))
-str(out_dNTD, 2)
+out_dNTF <- dNTF(X, Bin_A=c(1e+2, 1e+2, 1e+2), algorithm="KL", rank=4)
+str(out_dNTF, 2)
 ```
-
-After the calculation, various objects are returned by `dNTD`.
 
 The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
 
 ```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dNTD$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dNTD$RelChange[-1]), type="b", main="Relative Change")
+plot(log10(out_dNTF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dNTF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
-The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTD`.
+The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTF`.
 
 ```{r rec_bmf, echo=TRUE, fig.height=4, fig.width=8}
-recX <- recTensor(out_dNTD$S, out_dNTD$A)
+recX <- recTensor(out_dNTF$S, out_dNTF$A)
 layout(t(1:2))
 plotTensor3D(X)
 plotTensor3D(recX, thr=0)
 ```
 
-The histograms of $A_{k}$s show that $A_{k}$ looks binary.
+The histograms of $A_{k}$s show that all the factor matrices $A_{k}$ looks binary.
 
 ```{r a_bmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:3))
-hist(out_dNTD$A[[1]], main="A1", breaks=100)
-hist(out_dNTD$A[[2]], main="A2", breaks=100)
-hist(out_dNTD$A[[3]], main="A3", breaks=100)
+hist(out_dNTF$A[[1]], main="A1", breaks=100)
+hist(out_dNTF$A[[2]], main="A2", breaks=100)
+hist(out_dNTF$A[[3]], main="A3", breaks=100)
 ```
 
 # Semi-Binary Tensor Factorization (SBTF)
@@ -88,26 +93,26 @@ plotTensor3D(X2)
 
 ## Basic Usage
 
-In SBTF by NTD, rank parameters are needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNTF, see `?dNTF`. After the calculation, various objects are returned by `dNTF`. SBTF is achieved by specifying the binary regularization parameter as a large value like the below:
+In SBTF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNTF, see `?dNTF`. After the calculation, various objects are returned by `dNTF`. SBTF is achieved by specifying the binary regularization parameter as a large value like the below:
 
-```{r sbmf, echo=TRUE}
+```{r sbmf, echo=TRUE, fig.height=4, fig.width=8}
 set.seed(123456)
-out_dNTD2 <- dNTD(X2, Bin_A=c(1e-10, 1e-10, 1e+5), rank=c(4,4,4))
-str(out_dNTD2, 2)
+out_dNTF2 <- dNTF(X2, Bin_A=c(1e+5, 1e+5, 1e-10), algorithm="KL", rank=4)
+str(out_dNTF2, 2)
 ```
 
 `RecError` and `RelChange` can be used to diagnose whether the calculation is converged or not.
 
 ```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dNTD2$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dNTD2$RelChange[-1]), type="b", main="Relative Change")
+plot(log10(out_dNTF2$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dNTF2$RelChange[-1]), type="b", main="Relative Change")
 ```
 
-The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTD`.
+The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTF`.
 
 ```{r rec_sbmf, echo=TRUE, fig.height=4, fig.width=8}
-recX <- recTensor(out_dNTD2$S, out_dNTD2$A)
+recX <- recTensor(out_dNTF2$S, out_dNTF2$A)
 layout(t(1:2))
 plotTensor3D(X2)
 plotTensor3D(recX, thr=0)
@@ -117,9 +122,9 @@ The histograms of $A_{k}$s show that $A_{k}$ looks binary.
 
 ```{r a_sbmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:3))
-hist(out_dNTD2$A[[1]], main="A1", breaks=100)
-hist(out_dNTD2$A[[2]], main="A2", breaks=100)
-hist(out_dNTD2$A[[3]], main="A3", breaks=100)
+hist(out_dNTF2$A[[1]], main="A1", breaks=100)
+hist(out_dNTF2$A[[2]], main="A2", breaks=100)
+hist(out_dNTF2$A[[3]], main="A3", breaks=100)
 ```
 
 # Session Information {.unnumbered}

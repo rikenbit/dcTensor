@@ -1,5 +1,5 @@
 importFrom(stats, runif, rpois)
-importFrom(graphics, layout)
+importFrom(graphics, layout, plot.new)
 importFrom(grDevices, dev.off, png)
 importFrom(methods, is)
 importFrom(MASS, ginv)
@@ -10,6 +10,7 @@ importFrom(nnTensor, NMF, recTensor, plotTensor3D)
 export(
     toyModel,
     dNMF,
+    dNMTF,
     dSVD,
     dsiNMF,
     djNMF,

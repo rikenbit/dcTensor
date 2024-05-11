@@ -1,5 +1,5 @@
 ---
-title: "2. Discretized Singular Value Decomposition (`dSVD`)"
+title: "2. Discretized Non-negative Tri-Matrix Factorization (`dNMTF`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
@@ -10,20 +10,20 @@ bibliography: bibliography.bib
 package: dcTensor
 output: rmarkdown::html_vignette
 vignette: |
-  %\VignetteIndexEntry{2. Discretized Singular Value Decomposition (`dSVD`)}
+  %\VignetteIndexEntry{2. Discretized Non-negative Tri-Matrix Factorization (`dNMTF`)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 # Introduction
 
-In this vignette, we consider approximating a matrix as a product of two low-rank matrices (a.k.a., factor matrices).
+In this vignette, we consider approximating a binary or non-negative matrix as a product of three non-negative low-rank matrices (a.k.a., factor matrices).
 
 Test data is available from `toyModel`.
 
 ```{r data, echo=TRUE}
 library("dcTensor")
-X <- dcTensor::toyModel("dSVD")
+X <- dcTensor::toyModel("dNMF")
 ```
 
 You will see that there are five blocks in the data matrix as follows.
@@ -33,48 +33,170 @@ suppressMessages(library("fields"))
 image.plot(X, main="Original Data", legend.mar=8)
 ```
 
-# Semi-Ternary Matrix Factorization (STMF)
+# Binary Matrix Tri-Factorization (BMTF)
 
-Here, we introduce the ternary regularization to take {-1,0,1} values in $U$ as below:
+Here, we consider the approximation of a binary data matrix $X$ ($N \times M$) as a matrix product of $U$ ($N \times J1$), $S$ ($J1 \times J2$), and $V$ ($M \times J2$):
 
 $$
-X \approx U V' \ \mathrm{s.t.}\ U \in \{-1,0,1\},
+X \approx U S V' \ \mathrm{s.t.}\ U,V \in \{0,1\}, S \geq 0
 $$
-where $X$ ($N \times M$) is a data matrix, $U$ ($N \times J$) is a ternary score matrix, and $V$ ($M \times J$) is a loading matrix. In `dcTensor` package, the object function is optimized by combining gradient-descent algorithm [@svd] and ternary regularization.
+
+Here, we call this Binary Matrix Tri-Factorization (BMTF). BMTF is based on Non-negative Matrix Tri-Factorization (NMTF [@nmtf1; @nmtf2; @nmtf3]) and Binary Matrix Factorization (BMF [@bmf]). For the details of NMTF, see also `NMTF` function of [nnTensor](https://cran.r-project.org/package=nnTensor) package.
 
 ## Basic Usage
 
-In STMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) are also available. For the details of arguments of dSVD, see `?dSVD`. After the calculation, various objects are returned by `dSVD`. STMF is achieved by specifying the ternary regularization parameter as a large value like the below:
+In BMTF, two rank parameters $J1$ ($\leq N$) and  $J2$ ($\leq M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNMTF, see `?dNMTF`. After the calculation, various objects are returned by `dNMTF`.
 
-```{r stmf, echo=TRUE}
+```{r bmf, echo=TRUE}
 set.seed(123456)
-out_STMF <- dSVD(X, Ter_U=1E+10, J=5)
-str(out_STMF, 2)
+out_BMTF <- dNMTF(X, Bin_U=10, Bin_V=10, rank=c(5,5))
+str(out_BMTF, 2)
 ```
 
 The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
 
-```{r conv_stmf, echo=TRUE, fig.height=4, fig.width=8}
+```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_STMF$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_STMF$RelChange[-1]), type="b", main="Relative Change")
+plot(log10(out_BMTF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_BMTF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
-The product of $U$ and $V$ shows whether the original data is well-recovered by `dSVD`.
+The product of $U$, $S$, and $V$ shows whether the original data is well-recovered by `dNMTF`.
 
-```{r rec_stmf, echo=TRUE, fig.height=4, fig.width=8}
-recX <- out_STMF$U %*% t(out_STMF$V)
+```{r rec_bmf, echo=TRUE, fig.height=4, fig.width=8}
+recX <- out_BMTF$U %*% out_BMTF$S %*% t(out_BMTF$V)
 layout(t(1:2))
 image.plot(X, main="Original Data", legend.mar=8)
+image.plot(recX, main="Reconstructed Data (BMF)", legend.mar=8)
+```
+
+The histograms of $U$, $S$, and $V$ show that these take values close to 0 and 1.
+
+```{r u_v, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:3))
+hist(out_BMTF$U, breaks=100)
+hist(out_BMTF$S, breaks=100)
+hist(out_BMTF$V, breaks=100)
+```
+
+Note that these factor matrices do not always take the values of 0 and 1 completely. This is because the binarization in BMTF is based on the regularization to softly set the values as close to {0,1} as possible, and is not a hard binarization.
+
+```{r u_v2, echo=TRUE}
+out_BMTF$U[1:3,1:3]
+out_BMTF$S
+out_BMTF$V[1:3,1:3]
+```
+
+If you want to get the {0,1} values, use the `round` function as below:
+
+```{r u_v3, echo=TRUE}
+round(out_BMTF$U[1:3,1:3], 0)
+round(out_BMTF$S, 0)
+round(out_BMTF$V[1:3,1:3], 0)
+```
+
+# Semi-Binary Matrix Tri-Factorization (SBMTF)
+
+Next, we consider the approximation of a non-negative data matrix $X$ ($N \times M$) as the matrix product of binary matrix $U$ ($N \times J1$) and non-negative matrices, $S$ ($J1 \times J2$) and $V$ ($M \times J2$):
+
+$$
+X \approx U S V' \ \mathrm{s.t.}\ U \in \{0,1\}, S, V \geq 0
+$$
+
+Here, we define this formalization as Semi-Binary Matrix Tri-Factorization (SBMTF). SBMTF can capture discrete patterns from a non-negative matrix.
+
+To demonstrate SBMTF, next we use a non-negative matrix from the `nnTensor` package.
+
+```{r data3, echo=TRUE}
+suppressMessages(library("nnTensor"))
+X2 <- nnTensor::toyModel("NMF")
+```
+
+You will see that there are five blocks in the data matrix as follows.
+
+```{r data4, echo=TRUE, fig.height=4, fig.width=5}
+image.plot(X2, main="Original Data", legend.mar=8)
+```
+
+## Basic Usage
+
+Switching from BMTF to SBMTF is quite easy; SBMTF is achieved by specifying the binary regularization parameter as a large value like below:
+
+```{r sbmf, echo=TRUE}
+set.seed(123456)
+out_SBMTF <- dNMTF(X2, Bin_U=1E+6, rank=c(5,5))
+str(out_SBMTF, 2)
+```
+
+`RecError` and `RelChange` can be used to diagnose whether the calculation is converged or not.
+
+```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_SBMTF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_SBMTF$RelChange[-1]), type="b", main="Relative Change")
+```
+
+The product of $U$, $S$, and $V$ shows whether the original data is well-recovered by `dNMTF`.
+
+```{r rec_sbmf, echo=TRUE, fig.height=4, fig.width=8}
+recX2 <- out_SBMTF$U %*% out_SBMTF$S %*% t(out_SBMTF$V)
+layout(t(1:2))
+image.plot(X2, main="Original Data", legend.mar=8)
+image.plot(recX2, main="Reconstructed Data (SBMF)", legend.mar=8)
+```
+
+The histograms of $U$, $S$, and $V$ show that $U$ looks binary but $S$ and $V$ do not.
+
+```{r u_v4, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:3))
+hist(out_SBMTF$U, breaks=100)
+hist(out_SBMTF$S, breaks=100)
+hist(out_SBMTF$V, breaks=100)
+```
+
+# Semi-Ternary Matrix Tri-Factorization (STMTF)
+
+Finally, we expand the binary regularization to ternary regularization to take {0,1,2} values as below:
+
+$$
+X \approx U S V' \ \mathrm{s.t.}\ U \in \{0,1,2\}, S, V \geq 0,
+$$
+where $X$ ($N \times M$) is a non-negative data matrix, $U$ ($N \times J1$) is a ternary matrix, and $S$ ($J1 \times J2$) and $V$ ($M \times J2$) are non-negative matrices.
+
+## Basic Usage
+
+STMTF is achieved by specifying the ternary regularization parameter as a large value like the below:
+
+```{r stmf, echo=TRUE}
+set.seed(123456)
+out_STMTF <- dNMTF(X2, Ter_U=1E+5, rank=c(5,5))
+str(out_STMTF, 2)
+```
+
+`RecError` and `RelChange` can be used to diagnose whether the calculation is converging or not.
+
+```{r conv_stmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+plot(log10(out_STMTF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_STMTF$RelChange[-1]), type="b", main="Relative Change")
+```
+
+The product of $U$, $S$, and $V$ shows that the original data is well-recovered by `dNMTF`.
+
+```{r rec_stmf, echo=TRUE, fig.height=4, fig.width=8}
+recX <- out_STMTF$U %*%  out_STMTF$S %*% t(out_STMTF$V)
+layout(t(1:2))
+image.plot(X2, main="Original Data", legend.mar=8)
 image.plot(recX, main="Reconstructed Data (STMF)", legend.mar=8)
 ```
 
-The histograms of $U$ and $V$ show that $U$ looks ternary but $V$ does not.
+The histograms of $U$, $S$, and $V$ show that $U$ looks ternary but $S$ and $V$ do not.
 
 ```{r u_v5, echo=TRUE, fig.height=4, fig.width=8}
-layout(t(1:2))
-hist(out_STMF$U, breaks=100)
-hist(out_STMF$V, breaks=100)
+layout(t(1:3))
+hist(out_STMTF$U, breaks=100)
+hist(out_STMTF$S, breaks=100)
+hist(out_STMTF$V, breaks=100)
 ```
 
 # Session Information {.unnumbered}

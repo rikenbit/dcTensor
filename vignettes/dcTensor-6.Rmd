@@ -1,5 +1,5 @@
 ---
-title: "6. Discretized Non-negative Tensor Factorization (`dNTF`)"
+title: "5. Discretized Partial Least Squares (`dPLS`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
@@ -10,121 +10,84 @@ bibliography: bibliography.bib
 package: dcTensor
 output: rmarkdown::html_vignette
 vignette: |
-  %\VignetteIndexEntry{6. Discretized Non-negative Tensor Factorization (`dNTF`)}
+  %\VignetteIndexEntry{5. Discretized Partial Least Squares (`dPLS`)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 # Introduction
 
-In this vignette, we consider approximating a non-negative tensor as a product of binary or non-negative low-rank matrices (a.k.a., factor matrices).
+In this vignette, we consider approximating multiple matrices as a product of ternary (or non-negative) low-rank matrices (a.k.a., factor matrices).
 
 Test data is available from `toyModel`.
 
 ```{r data, echo=TRUE}
 library("dcTensor")
-X <- dcTensor::toyModel("dNTF")
+X <- dcTensor::toyModel("dPLS_Easy")
 ```
 
-You will see that there are four blocks in the data tensor as follows.
+You will see that there are five blocks in the data matrix as follows.
 
-```{r data2, echo=TRUE, fig.height=8, fig.width=8}
-suppressMessages(library("nnTensor"))
-plotTensor3D(X)
+```{r data2, echo=TRUE, fig.height=2.7, fig.width=8}
+suppressMessages(library("fields"))
+layout(t(1:3))
+image.plot(X[[1]], main="X1", legend.mar=8)
+image.plot(X[[2]], main="X2", legend.mar=8)
+image.plot(X[[3]], main="X3", legend.mar=8)
 ```
 
-# Binary Tensor Factorization (BTF)
+# Semi-Ternary Simultaneous Matrix Factorization (STSMF)
 
-To decompose a binary tensor ($\mathcal{X}$), non-negative CP decomposition (a.k.a. non-negative tensor factorization; NTF [@ntf; @amari]) can be applied. NTF appoximates $\mathcal{X}$ ($N \times M \times L$) as the mode-product of a core tensor $S$ ($J \times J \times J$) and factor matrices $A_1$ ($J \times N$), $A_2$ ($J \times M$), and $A_3$ ($J \times L$).
+Here, we introduce the ternary regularization to take {-1,0,1} values in $V_{k}$ as below:
 
 $$
-\mathcal{X} \approx \mathcal{S} \times_{1} A_1 \times_{2} A_2 \times_{3} A_3\ \mathrm{s.t.}\ \mathcal{S} \geq 0, A_{k} \geq 0\ (k=1 \ldots 3)
+\max{\mathrm{tr} \left( V_{j}'X_{j}'X_{k}V_{k} \right)}\ \mathrm{s.t.}\ j ≠k, V \in \{-1,0,1\},
 $$
-
-Note that \times_{k} is the mode-$k$ product [@amari] and the core tensor $S$ has non-negative values only in the diagonal element. For the details, see `NTF` function of [nnTensor](https://cran.r-project.org/package=nnTensor) package.
-
+where $j$ and $k$ range from $1$ to $K$, $K$ is the number of matrices, $X_{k}$ ($N \times M_{k}$) is a $k$-th data matrix and $V_{k}$ ($M_{k} \times J$) is a $k$-th ternary loading matrix. In `dcTensor` package, the object function is optimized by combining gradient-descent algorithm [@svd] and ternary regularization.
 
 ## Basic Usage
 
-In BTF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNTF, see `?dNTF`. After the calculation, various objects are returned by `dNTF`. BTF is achieved by specifying the binary regularization parameter as a large value like the below:
+In STSMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) are also available. For the details of arguments of dPLS, see `?dPLS`. After the calculation, various objects are returned by `dPLS`. STSMF is achieved by specifying the ternary regularization parameter as a large value like the below:
 
-```{r bmf, echo=TRUE, fig.height=4, fig.width=8}
+```{r pls, echo=TRUE}
 set.seed(123456)
-out_dNTF <- dNTF(X, Bin_A=c(1e+2, 1e+2, 1e+2), algorithm="KL", rank=4)
-str(out_dNTF, 2)
+out_dPLS <- dPLS(X, Ter_V=1E+5, J=3)
+str(out_dPLS, 2)
 ```
 
 The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
 
-```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
+```{r conv_pls, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dNTF$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dNTF$RelChange[-1]), type="b", main="Relative Change")
+plot(log10(out_dPLS$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_dPLS$RelChange[-1]), type="b", main="Relative Change")
 ```
 
-The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTF`.
+The products of $U_{k}$ and $V_{k}$ ($k = 1 \ldots K$) show whether the original data matrices are well-recovered by `dPLS`.
 
-```{r rec_bmf, echo=TRUE, fig.height=4, fig.width=8}
-recX <- recTensor(out_dNTF$S, out_dNTF$A)
-layout(t(1:2))
-plotTensor3D(X)
-plotTensor3D(recX, thr=0)
+```{r rec_pls, echo=TRUE, fig.height=5, fig.width=8}
+recX <- lapply(seq_along(X), function(x){
+  out_dPLS$U[[x]] %*% t(out_dPLS$V[[x]])
+})
+layout(rbind(1:3, 4:6))
+image.plot(t(X[[1]]))
+image.plot(t(X[[2]]))
+image.plot(t(X[[3]]))
+image.plot(t(recX[[1]]))
+image.plot(t(recX[[2]]))
+image.plot(t(recX[[3]]))
 ```
 
-The histograms of $A_{k}$s show that all the factor matrices $A_{k}$ looks binary.
+The histograms of $V_{k}$s show that all the factor matrices $V_{k}$ looks ternary.
 
-```{r a_bmf, echo=TRUE, fig.height=4, fig.width=8}
-layout(t(1:3))
-hist(out_dNTF$A[[1]], main="A1", breaks=100)
-hist(out_dNTF$A[[2]], main="A2", breaks=100)
-hist(out_dNTF$A[[3]], main="A3", breaks=100)
-```
-
-# Semi-Binary Tensor Factorization (SBTF)
-
-Here, we define this formalization as semi-binary tensor factorization (SBTF). SBTF can capture discrete patterns from non-negative matrices.
-
-To demonstrate SBMF, next we use a non-negative tensor from the `nnTensor` package. You will see that there are four blocks in the data tensor as follows.
-
-```{r data3, echo=TRUE, fig.height=8, fig.width=8}
-X2 <- nnTensor::toyModel("CP")
-plotTensor3D(X2)
-```
-
-## Basic Usage
-
-In SBTF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dNTF, see `?dNTF`. After the calculation, various objects are returned by `dNTF`. SBTF is achieved by specifying the binary regularization parameter as a large value like the below:
-
-```{r sbmf, echo=TRUE, fig.height=4, fig.width=8}
-set.seed(123456)
-out_dNTF2 <- dNTF(X2, Bin_A=c(1e+5, 1e+5, 1e-10), algorithm="KL", rank=4)
-str(out_dNTF2, 2)
-```
-
-`RecError` and `RelChange` can be used to diagnose whether the calculation is converged or not.
-
-```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
-layout(t(1:2))
-plot(log10(out_dNTF2$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dNTF2$RelChange[-1]), type="b", main="Relative Change")
-```
-
-The product of core tensor $S$ and factor matrices $A_{k}$ shows whether the original data is well-recovered by `dNTF`.
-
-```{r rec_sbmf, echo=TRUE, fig.height=4, fig.width=8}
-recX <- recTensor(out_dNTF2$S, out_dNTF2$A)
-layout(t(1:2))
-plotTensor3D(X2)
-plotTensor3D(recX, thr=0)
-```
-
-The histograms of $A_{k}$s show that $A_{k}$ looks binary.
-
-```{r a_sbmf, echo=TRUE, fig.height=4, fig.width=8}
-layout(t(1:3))
-hist(out_dNTF2$A[[1]], main="A1", breaks=100)
-hist(out_dNTF2$A[[2]], main="A2", breaks=100)
-hist(out_dNTF2$A[[3]], main="A3", breaks=100)
+```{r u_v, echo=TRUE, fig.height=5, fig.width=8}
+layout(rbind(1:3, 4:6))
+hist(out_dPLS$U[[1]], breaks=100)
+hist(out_dPLS$U[[2]], breaks=100)
+hist(out_dPLS$U[[3]], breaks=100)
+hist(out_dPLS$V[[1]], breaks=100)
+hist(out_dPLS$V[[2]], breaks=100)
+hist(out_dPLS$V[[3]], breaks=100)
 ```
 
 # Session Information {.unnumbered}

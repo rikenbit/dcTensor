@@ -8,6 +8,7 @@ options(testthat.use_colours = FALSE)
 # Basic usage
 test_file("testthat/test_toyModel.R")
 test_file("testthat/test_dNMF.R")
+# test_file("testthat/test_dNMTF.R")
 test_file("testthat/test_dSVD.R")
 # test_file("testthat/test_dsiNMF.R")
 # test_file("testthat/test_djNMF.R")
@@ -17,6 +18,7 @@ test_file("testthat/test_dSVD.R")
 
 # # Mask matrix/tensor for imputation
 # test_file("testthat/test_mask_dNMF.R")
+# test_file("testthat/test_mask_dNMTF.R")
 # test_file("testthat/test_mask_dSVD.R")
 # test_file("testthat/test_mask_dsiNMF.R")
 # test_file("testthat/test_mask_djNMF.R")
@@ -26,6 +28,7 @@ test_file("testthat/test_dSVD.R")
 
 # # NA avoidance
 # test_file("testthat/test_NA_dNMF.R")
+# test_file("testthat/test_NA_dNMTF.R")
 # test_file("testthat/test_NA_dSVD.R")
 # test_file("testthat/test_NA_dsiNMF.R")
 # test_file("testthat/test_NA_djNMF.R")
@@ -35,6 +38,7 @@ test_file("testthat/test_dSVD.R")
 
 # # Initialization
 # test_file("testthat/test_init_dNMF.R")
+# test_file("testthat/test_init_dNMTF.R")
 # test_file("testthat/test_init_dSVD.R")
 # test_file("testthat/test_init_dsiNMF.R")
 # test_file("testthat/test_init_djNMF.R")
@@ -44,6 +48,7 @@ test_file("testthat/test_dSVD.R")
 
 # # Fix options for transfer learning
 # test_file("testthat/test_fix_dNMF.R")
+# test_file("testthat/test_fix_dNMTF.R")
 # test_file("testthat/test_fix_dSVD.R")
 # test_file("testthat/test_fix_dsiNMF.R")
 # test_file("testthat/test_fix_djNMF.R")

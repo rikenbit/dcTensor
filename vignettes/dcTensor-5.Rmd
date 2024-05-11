@@ -1,5 +1,5 @@
 ---
-title: "5. Discretized Partial Least Squares (`dPLS`)"
+title: "4. Discretized Joint Non-negative Matrix Factrozation (`djNMF`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
@@ -10,23 +10,24 @@ bibliography: bibliography.bib
 package: dcTensor
 output: rmarkdown::html_vignette
 vignette: |
-  %\VignetteIndexEntry{5. Discretized Partial Least Squares (`dPLS`)}
+  %\VignetteIndexEntry{4. Discretized Joint Non-negative Matrix Factrozation (`djNMF`)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 # Introduction
 
-In this vignette, we consider approximating multiple matrices as a product of ternary (or non-negative) low-rank matrices (a.k.a., factor matrices).
+In this vignette, we consider approximating non-negative multiple matrices as a product of binary (or non-negative) low-rank matrices (a.k.a., factor matrices).
 
 Test data is available from `toyModel`.
 
 ```{r data, echo=TRUE}
 library("dcTensor")
-X <- dcTensor::toyModel("dPLS_Easy")
+suppressMessages(library("nnTensor"))
+X <- nnTensor::toyModel("siNMF_Hard")
 ```
 
-You will see that there are five blocks in the data matrix as follows.
+You will see that there are some blocks in the data matrices as follows.
 
 ```{r data2, echo=TRUE, fig.height=2.7, fig.width=8}
 suppressMessages(library("fields"))
@@ -36,58 +37,66 @@ image.plot(X[[2]], main="X2", legend.mar=8)
 image.plot(X[[3]], main="X3", legend.mar=8)
 ```
 
-# Semi-Ternary Simultaneous Matrix Factorization (STSMF)
+# Semi-Binary Simultaneous Matrix Factorization (SBSMF)
 
-Here, we introduce the ternary regularization to take {-1,0,1} values in $V_{k}$ as below:
+Here, we consider the approximation of $K$ binary data matrices $X_{k}$ ($N \times M_{k}$) as the matrix product of $W$ ($N \times J$) and $V_{k}$ (J \times $M_{k}$):
 
 $$
-\max{\mathrm{tr} \left( V_{j}'X_{j}'X_{k}V_{k} \right)}\ \mathrm{s.t.}\ j ≠k, V \in \{-1,0,1\},
+X_{k} \approx (W + V_{k}) H_{k} \ \mathrm{s.t.}\ W,V_{k},H_{k} \in \{0,1\}
 $$
-where $j$ and $k$ range from $1$ to $K$, $K$ is the number of matrices, $X_{k}$ ($N \times M_{k}$) is a $k$-th data matrix and $V_{k}$ ($M_{k} \times J$) is a $k$-th ternary loading matrix. In `dcTensor` package, the object function is optimized by combining gradient-descent algorithm [@svd] and ternary regularization.
+
+This is the combination of binary matrix factorization (BMF [@bmf]) and joint non-negative matrix decomposition (jNMF [@jnmf; @amari]), which is implemented by adding binary regularization against jNMF. See also `jNMF` function of [nnTensor](https://cran.r-project.org/package=nnTensor) package.
 
 ## Basic Usage
 
-In STSMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) are also available. For the details of arguments of dPLS, see `?dPLS`. After the calculation, various objects are returned by `dPLS`. STSMF is achieved by specifying the ternary regularization parameter as a large value like the below:
+In SBSMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of djNMF, see `?djNMF`. After the calculation, various objects are returned by `djNMF`. SBSMF is achieved by specifying the binary regularization parameter as a large value like the below:
 
-```{r pls, echo=TRUE}
+```{r sbmf, echo=TRUE}
 set.seed(123456)
-out_dPLS <- dPLS(X, Ter_V=1E+5, J=3)
-str(out_dPLS, 2)
+out_djNMF <- djNMF(X, Bin_W=1E-1, J=4)
+str(out_djNMF, 2)
 ```
 
 The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
 
-```{r conv_pls, echo=TRUE, fig.height=4, fig.width=8}
+```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dPLS$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dPLS$RelChange[-1]), type="b", main="Relative Change")
+plot(log10(out_djNMF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_djNMF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
-The products of $U_{k}$ and $V_{k}$ ($k = 1 \ldots K$) show whether the original data matrices are well-recovered by `dPLS`.
+The products of $W$ and $H_{k}$s show whether the original data matrices are well-recovered by `djNMF`.
 
-```{r rec_pls, echo=TRUE, fig.height=5, fig.width=8}
-recX <- lapply(seq_along(X), function(x){
-  out_dPLS$U[[x]] %*% t(out_dPLS$V[[x]])
+```{r rec_sbmf, echo=TRUE, fig.height=8, fig.width=8}
+recX1 <- lapply(seq_along(X), function(x){
+  out_djNMF$W %*% t(out_djNMF$H[[x]])
 })
-layout(rbind(1:3, 4:6))
-image.plot(t(X[[1]]))
-image.plot(t(X[[2]]))
-image.plot(t(X[[3]]))
-image.plot(t(recX[[1]]))
-image.plot(t(recX[[2]]))
-image.plot(t(recX[[3]]))
+recX2 <- lapply(seq_along(X), function(x){
+  out_djNMF$V[[x]] %*% t(out_djNMF$H[[x]])
+})
+layout(rbind(1:3, 4:6, 7:9))
+image.plot(X[[1]], legend.mar=8, main="X1")
+image.plot(X[[2]], legend.mar=8, main="X2")
+image.plot(X[[3]], legend.mar=8, main="X3")
+image.plot(recX1[[1]], legend.mar=8, main="Reconstructed X1 (Common Factor)")
+image.plot(recX1[[2]], legend.mar=8, main="Reconstructed X2 (Common Factor)")
+image.plot(recX1[[3]], legend.mar=8, main="Reconstructed X3 (Common Factor)")
+image.plot(recX2[[1]], legend.mar=8, main="Reconstructed X1 (Specific Factor)")
+image.plot(recX2[[2]], legend.mar=8, main="Reconstructed X2 (Specific Factor)")
+image.plot(recX2[[3]], legend.mar=8, main="Reconstructed X3 (Specific Factor)")
 ```
 
-The histograms of $V_{k}$s show that all the factor matrices $V_{k}$ looks ternary.
+The histogram of $W$ shows that the factor matrix $W$ looks binary.
 
-```{r u_v, echo=TRUE, fig.height=5, fig.width=8}
-layout(rbind(1:3, 4:6))
-hist(out_dPLS$U[[1]], breaks=100)
-hist(out_dPLS$U[[2]], breaks=100)
-hist(out_dPLS$U[[3]], breaks=100)
-hist(out_dPLS$V[[1]], breaks=100)
-hist(out_dPLS$V[[2]], breaks=100)
-hist(out_dPLS$V[[3]], breaks=100)
+```{r w_h_sbmf, echo=TRUE, fig.height=4, fig.width=8}
+layout(rbind(1:4, 5:8))
+hist(out_djNMF$W, main="W", breaks=100)
+hist(out_djNMF$H[[1]], main="H1", breaks=100)
+hist(out_djNMF$H[[2]], main="H2", breaks=100)
+hist(out_djNMF$H[[3]], main="H3", breaks=100)
+hist(out_djNMF$V[[1]], main="V1", breaks=100)
+hist(out_djNMF$V[[2]], main="V2", breaks=100)
+hist(out_djNMF$V[[3]], main="V3", breaks=100)
 ```
 
 # Session Information {.unnumbered}

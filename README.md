@@ -17,6 +17,7 @@ dcTensor provides the discretized version of matrix and tensor decomposition
 algorithms such as:
 
 - Discretized Non-negative Matrix Factorization Algorithms (dNMF)
+- Discretized Non-negative Matrix Tri-Factorization Algorithms (dNMTF)
 - Discretized Singular Value Decomposition (dSVD)
 - Discretized Simultaneous Non-negative Matrix Factorization Algorithms (dsiNMF)
 - Discretized Joint Non-negative Matrix Factorization Algorithms (djNMF)
@@ -65,6 +66,7 @@ library("dcTensor")
 
 ?toyModel
 ?dNMF
+?dNMTF
 ?dSVD
 ?dsiNMF
 ?djNMF
@@ -77,6 +79,10 @@ References
 ======
 - **Binary Matrix Factorization (BMF)**
   - Z. Zhang, T. Li, C. Ding and X. Zhang, "Binary Matrix Factorization with Applications," Seventh IEEE International Conference on Data Mining (ICDM 2007), Omaha, NE, USA, 2007, pp. 391-400, doi: 10.1109/ICDM.2007.99.
+- **Non-negative Matrix Tri-Factorization (NMTF)**
+  - Copar, A. et al., Fast Optimization of Non-Negative Matrix Tri-Factorization: Supporting Information, PLOS ONE, 14(6), e0217994, 2019
+  - Long, B. et al., Co-clustering by Block Value Decomposition, SIGKDD'05, 635–640, 2005
+  - Ding, C. et al., Orthogonal Nonnegative Matrix Tri-Factorizations for Clustering, 12th ACM SIGKDD'06, 126–135, 2006
 - **Singular Value Decomposition (SVD) based on Gradient Descent**
   - Tsuyuzaki K, et al., Benchmarking principal component analysis for large-scale single-cell RNA-sequencing. BMC Genome Biology. 21(1), 9, 2020
 - **Simultaneous Non-negative Matrix Factorization (siNMF)**

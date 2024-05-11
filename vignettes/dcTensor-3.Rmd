@@ -1,5 +1,5 @@
 ---
-title: "3. Discretized Simultaneous Non-negative Matrix Factrozation (`dsiNMF`)"
+title: "2. Discretized Singular Value Decomposition (`dSVD`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
@@ -10,145 +10,71 @@ bibliography: bibliography.bib
 package: dcTensor
 output: rmarkdown::html_vignette
 vignette: |
-  %\VignetteIndexEntry{3. Discretized Simultaneous Non-negative Matrix Factrozation (`dsiNMF`)}
+  %\VignetteIndexEntry{2. Discretized Singular Value Decomposition (`dSVD`)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 # Introduction
 
-In this vignette, we consider approximating non-negative multiple matrices as a product of binary (or non-negative) low-rank matrices (a.k.a., factor matrices).
+In this vignette, we consider approximating a matrix as a product of two low-rank matrices (a.k.a., factor matrices).
 
 Test data is available from `toyModel`.
 
 ```{r data, echo=TRUE}
 library("dcTensor")
-X <- dcTensor::toyModel("dsiNMF_Easy")
+X <- dcTensor::toyModel("dSVD")
 ```
 
-You will see that there are some blocks in the data matrices as follows.
+You will see that there are five blocks in the data matrix as follows.
 
-```{r data2, echo=TRUE, fig.height=2.7, fig.width=8}
+```{r data2, echo=TRUE, fig.height=4, fig.width=5}
 suppressMessages(library("fields"))
-layout(t(1:3))
-image.plot(X[[1]], main="X1", legend.mar=8)
-image.plot(X[[2]], main="X2", legend.mar=8)
-image.plot(X[[3]], main="X3", legend.mar=8)
+image.plot(X, main="Original Data", legend.mar=8)
 ```
 
-# Binary Simultaneous Matrix Factorization (BSMF)
+# Semi-Ternary Matrix Factorization (STMF)
 
-Here, we consider the approximation of $K$ binary data matrices $X_{k}$ ($N \times M_{k}$) as the matrix product of $W$ ($N \times J$) and $V_{k}$ (J \times $M_{k}$):
+Here, we introduce the ternary regularization to take {-1,0,1} values in $U$ as below:
 
 $$
-X_{k} \approx W H_{k} \ \mathrm{s.t.}\ W,H_{k} \in \{0,1\}
+X \approx U V' \ \mathrm{s.t.}\ U \in \{-1,0,1\},
 $$
-
-This is the combination of binary matrix factorization (BMF [@bmf]) and simultaneous non-negative matrix decomposition (siNMF [@sinmf1; @sinmf2; @sinmf3; @amari]), which is implemented by adding binary regularization against siNMF.
-
-For the details of arguments of dsiNMF, see `?dsiNMF`. After the calculation, various objects are returned by `dsiNMF`.
-
-See also `siNMF` function of [nnTensor](https://cran.r-project.org/package=nnTensor) package.
+where $X$ ($N \times M$) is a data matrix, $U$ ($N \times J$) is a ternary score matrix, and $V$ ($M \times J$) is a loading matrix. In `dcTensor` package, the object function is optimized by combining gradient-descent algorithm [@svd] and ternary regularization.
 
 ## Basic Usage
 
-In BSMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dsiNMF, see `?dsiNMF`. After the calculation, various objects are returned by `dsiNMF`. BSMF is achieved by specifying the binary regularization parameter as a large value like the below:
+In STMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) are also available. For the details of arguments of dSVD, see `?dSVD`. After the calculation, various objects are returned by `dSVD`. STMF is achieved by specifying the ternary regularization parameter as a large value like the below:
 
-```{r bmf, echo=TRUE}
+```{r stmf, echo=TRUE}
 set.seed(123456)
-out_dsiNMF <- dsiNMF(X, Bin_W=1E+1, Bin_H=c(1E+1, 1E+1, 1E+1), J=3)
-str(out_dsiNMF, 2)
+out_STMF <- dSVD(X, Ter_U=1E+10, J=5)
+str(out_STMF, 2)
 ```
 
 The reconstruction error (`RecError`) and relative error (`RelChange`, the amount of change from the reconstruction error in the previous step) can be used to diagnose whether the calculation is converged or not.
 
-```{r conv_bmf, echo=TRUE, fig.height=4, fig.width=8}
+```{r conv_stmf, echo=TRUE, fig.height=4, fig.width=8}
 layout(t(1:2))
-plot(log10(out_dsiNMF$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dsiNMF$RelChange[-1]), type="b", main="Relative Change")
+plot(log10(out_STMF$RecError[-1]), type="b", main="Reconstruction Error")
+plot(log10(out_STMF$RelChange[-1]), type="b", main="Relative Change")
 ```
 
-The products of $W$ and $H_{k}$s show whether the original data marices are well-recovered by `dsiNMF`.
+The product of $U$ and $V$ shows whether the original data is well-recovered by `dSVD`.
 
-```{r rec_bmf, echo=TRUE, fig.height=5, fig.width=8}
-recX <- lapply(seq_along(X), function(x){
-  out_dsiNMF$W %*% t(out_dsiNMF$H[[x]])
-})
-layout(rbind(1:3, 4:6))
-image.plot(X[[1]], main="X1", legend.mar=8)
-image.plot(X[[2]], main="X2", legend.mar=8)
-image.plot(X[[3]], main="X3", legend.mar=8)
-image.plot(recX[[1]], main="Reconstructed X1", legend.mar=8)
-image.plot(recX[[2]], main="Reconstructed X2", legend.mar=8)
-image.plot(recX[[3]], main="Reconstructed X3", legend.mar=8)
-```
-
-The histograms of $H_{k}$s show that $H_{k}$s look binary.
-
-```{r w_h_bmf, echo=TRUE, fig.height=4, fig.width=8}
-layout(rbind(1:2, 3:4))
-hist(out_dsiNMF$W, main="W", breaks=100)
-hist(out_dsiNMF$H[[1]], main="H1", breaks=100)
-hist(out_dsiNMF$H[[2]], main="H2", breaks=100)
-hist(out_dsiNMF$H[[3]], main="H3", breaks=100)
-```
-
-# Semi-Binary Simultaneous Matrix Factorization (SBSMF)
-
-Semi-Binary Simultaneous Matrix Factorization (SBSMF) is an extension of BSMF; we can select specific factor matrix (or matrices).
-
-To demonstrate SBSMF, next we use non-negative matrices from the `nnTensor` package.
-
-```{r data3, echo=TRUE, fig.height=3.5, fig.width=8}
-suppressMessages(library("nnTensor"))
-X2 <- nnTensor::toyModel("siNMF_Easy")
-layout(t(1:3))
-image.plot(X2[[1]], main="X1", legend.mar=8)
-image.plot(X2[[2]], main="X2", legend.mar=8)
-image.plot(X2[[3]], main="X3", legend.mar=8)
-```
-
-## Basic Usage
-
-In SBSMF, a rank parameter $J$ ($\leq \min(N, M)$) is needed to be set in advance. Other settings such as the number of iterations (`num.iter`) or factorization algorithm (`algorithm`) are also available. For the details of arguments of dsiNMF, see `?dsiNMF`. After the calculation, various objects are returned by `dsiNMF`. SBSMF is achieved by specifying the binary regularization parameter as a large value like the below:
-
-```{r sbmf, echo=TRUE}
-set.seed(123456)
-out_dsiNMF2 <- dsiNMF(X2, Bin_W=1E+2, J=3)
-str(out_dsiNMF2, 2)
-```
-
-`RecError` and `RelChange` can be used to diagnose whether the calculation is converged or not.
-
-```{r conv_sbmf, echo=TRUE, fig.height=4, fig.width=8}
+```{r rec_stmf, echo=TRUE, fig.height=4, fig.width=8}
+recX <- out_STMF$U %*% t(out_STMF$V)
 layout(t(1:2))
-plot(log10(out_dsiNMF2$RecError[-1]), type="b", main="Reconstruction Error")
-plot(log10(out_dsiNMF2$RelChange[-1]), type="b", main="Relative Change")
+image.plot(X, main="Original Data", legend.mar=8)
+image.plot(recX, main="Reconstructed Data (STMF)", legend.mar=8)
 ```
 
-The products of $W$ and $H_{k}$s show whether the original data is well-recovered by `dsiNMF`.
+The histograms of $U$ and $V$ show that $U$ looks ternary but $V$ does not.
 
-```{r rec_sbmf, echo=TRUE, fig.height=5, fig.width=8}
-recX <- lapply(seq_along(X2), function(x){
-  out_dsiNMF2$W %*% t(out_dsiNMF2$H[[x]])
-})
-layout(rbind(1:3, 4:6))
-image.plot(X2[[1]], main="X1", legend.mar=8)
-image.plot(X2[[2]], main="X2", legend.mar=8)
-image.plot(X2[[3]], main="X3", legend.mar=8)
-image.plot(recX[[1]], main="Reconstructed X1", legend.mar=8)
-image.plot(recX[[2]], main="Reconstructed X2", legend.mar=8)
-image.plot(recX[[3]], main="Reconstructed X3", legend.mar=8)
-```
-
-The histograms of $H_{k}$s show that all the factor matrices $H_{k}$s look binary.
-
-```{r w_h_sbmf, echo=TRUE, fig.height=4, fig.width=8}
-layout(rbind(1:2, 3:4))
-hist(out_dsiNMF2$W, breaks=100)
-hist(out_dsiNMF2$H[[1]], main="H1", breaks=100)
-hist(out_dsiNMF2$H[[2]], main="H2", breaks=100)
-hist(out_dsiNMF2$H[[3]], main="H3", breaks=100)
+```{r u_v5, echo=TRUE, fig.height=4, fig.width=8}
+layout(t(1:2))
+hist(out_STMF$U, breaks=100)
+hist(out_STMF$V, breaks=100)
 ```
 
 # Session Information {.unnumbered}
