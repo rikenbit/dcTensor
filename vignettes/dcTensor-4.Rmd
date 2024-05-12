@@ -1,5 +1,5 @@
 ---
-title: "3. Discretized Simultaneous Non-negative Matrix Factrozation (`dsiNMF`)"
+title: "4. Discretized Simultaneous Non-negative Matrix Factrozation (`dsiNMF`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,

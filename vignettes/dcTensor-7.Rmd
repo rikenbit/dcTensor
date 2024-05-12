@@ -1,5 +1,5 @@
 ---
-title: "6. Discretized Non-negative Tensor Factorization (`dNTF`)"
+title: "7. Discretized Non-negative Tensor Factorization (`dNTF`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,

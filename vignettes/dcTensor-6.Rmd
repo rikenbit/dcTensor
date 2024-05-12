@@ -1,5 +1,5 @@
 ---
-title: "5. Discretized Partial Least Squares (`dPLS`)"
+title: "6. Discretized Partial Least Squares (`dPLS`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,

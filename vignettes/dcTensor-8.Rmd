@@ -1,5 +1,5 @@
 ---
-title: "7. Discretized Non-negative Tucker Decomposition (`dNTD`)"
+title: "8. Discretized Non-negative Tucker Decomposition (`dNTD`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,

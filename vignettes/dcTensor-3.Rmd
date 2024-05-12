@@ -1,5 +1,5 @@
 ---
-title: "2. Discretized Singular Value Decomposition (`dSVD`)"
+title: "3. Discretized Singular Value Decomposition (`dSVD`)"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
