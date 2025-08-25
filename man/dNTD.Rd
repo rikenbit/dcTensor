@@ -143,7 +143,7 @@ Tucker decomposition and its applications for multiway analysis and classificati
 \author{Koki Tsuyuzaki}
 
 \seealso{
-\code{\link{plotTensor3D}}
+\code{\link[nnTensor:plotTensor3D]{nnTensor::plotTensor3D}}
 }
 \examples{
 tensordata <- toyModel(model = "dNTD")

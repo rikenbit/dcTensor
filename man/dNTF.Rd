@@ -127,7 +127,7 @@ and Computer Sciences}
 \author{Koki Tsuyuzaki}
 
 \seealso{
-\code{\link{plotTensor3D}}
+\code{\link[nnTensor:plotTensor3D]{nnTensor::plotTensor3D}}
 }
 \examples{
 tensordata <- toyModel(model = "dNTF")
